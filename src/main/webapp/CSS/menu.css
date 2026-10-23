@@ -582,3 +582,60 @@ body.menu-page-body {
         transform: scale(1);
     }
 }
+
+/* =========================================================
+   INSTANT QUICK FILTER PILLS
+   ========================================================= */
+.quick-filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 16px 0;
+    align-items: center;
+}
+
+.q-pill {
+    background: #ffffff;
+    border: 1px solid #e0d7cb;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #5d503f;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.q-pill:hover {
+    background: #fdf5ea;
+    border-color: #f3a829;
+    color: #36291a;
+    transform: translateY(-1px);
+}
+
+.q-pill.active {
+    background: #f3a829;
+    border-color: #f3a829;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(243, 168, 41, 0.35);
+}
+
+[data-theme="dark"] .q-pill {
+    background: #242220;
+    border-color: #3a3734;
+    color: #d1c8bd;
+}
+
+[data-theme="dark"] .q-pill:hover {
+    background: #2f2b26;
+    border-color: #f3a829;
+    color: #fefefe;
+}
+
+[data-theme="dark"] .q-pill.active {
+    background: #f3a829;
+    border-color: #f3a829;
+    color: #1a1715;
+    box-shadow: 0 2px 8px rgba(243, 168, 41, 0.45);
+}

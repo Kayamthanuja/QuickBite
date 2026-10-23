@@ -1,3 +1,4 @@
+
 package com.tap.controller;
 
 import java.io.IOException;
@@ -32,97 +33,132 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet("/orderSuccess")
 public class OrderStatusController extends HttpServlet {
 
-	private OrderDAO orderDAO;
-	private OrderItemDAO orderItemDAO;
-	private MenuDAO menuDAO;
-	private RestaurantDAO restaurantDAO;
-	private UserDAO userDAO;
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void init() {
-		orderDAO = new OrderDAOImpl();
-		orderItemDAO = new OrderItemDAOImpl();
-		menuDAO = new MenuDAOImpl();
-		restaurantDAO = new RestaurantDAOImpl();
-		userDAO = new UserDAOImpl();
-	}
+    private OrderDAO orderDAO;
+    private OrderItemDAO orderItemDAO;
+    private MenuDAO menuDAO;
+    private RestaurantDAO restaurantDAO;
+    private UserDAO userDAO;
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    @Override
+    public void init() {
+        orderDAO = new OrderDAOImpl();
+        orderItemDAO = new OrderItemDAOImpl();
+        menuDAO = new MenuDAOImpl();
+        restaurantDAO = new RestaurantDAOImpl();
+        userDAO = new UserDAOImpl();
+    }
 
-		HttpSession session = req.getSession(false);
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		// Check whether user is logged in
-		if (session == null || session.getAttribute("user") == null) {
-			resp.sendRedirect(req.getContextPath() + "/login");
-			return;
-		}
+        HttpSession session = req.getSession(false);
 
-		// Get the last placed order ID
-		Object orderIdObject = session.getAttribute("lastOrderId");
+        // Require the user to be logged in.
+        if (session == null || session.getAttribute("user") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
 
-		if (orderIdObject == null) {
-			// Try checking query param
-			String qId = req.getParameter("orderId");
-			if (qId != null && !qId.isBlank()) {
-				try {
-					orderIdObject = Integer.parseInt(qId.trim());
-				} catch (Exception ignored) {
-				}
-			}
-		}
+        /*
+         * First, read the order ID supplied in the email link.
+         * This ensures that an older email opens its own order,
+         * rather than whichever order was placed most recently.
+         */
+        Integer orderId = null;
 
-		if (orderIdObject == null) {
-			resp.sendRedirect(req.getContextPath() + "/restaurant");
-			return;
-		}
+        String queryOrderId = req.getParameter("orderId");
 
-		int orderId = (Integer) orderIdObject;
+        if (queryOrderId != null && !queryOrderId.isBlank()) {
+            try {
+                orderId = Integer.parseInt(queryOrderId.trim());
+            } catch (NumberFormatException e) {
+                resp.sendRedirect(req.getContextPath() + "/orders");
+                return;
+            }
+        }
 
-		Order order = orderDAO.getOrder(orderId);
-		Restaurant restaurant = null;
-		User deliveryPartner = null;
+        // If the URL has no order ID, fall back to the session.
+        if (orderId == null) {
+            Object lastOrderId = session.getAttribute("lastOrderId");
 
-		List<OrderItem> orderItems = null;
-		Map<Integer, Menu> menuById = new HashMap<>();
+            if (lastOrderId instanceof Integer) {
+                orderId = (Integer) lastOrderId;
+            } else if (lastOrderId != null) {
+                try {
+                    orderId = Integer.parseInt(lastOrderId.toString());
+                } catch (NumberFormatException e) {
+                    resp.sendRedirect(req.getContextPath() + "/restaurant");
+                    return;
+                }
+            }
+        }
 
-		if (order != null) {
-			if (order.getRestaurantId() > 0) {
-				restaurant = restaurantDAO.getRestaurant(order.getRestaurantId());
-			}
+        if (orderId == null) {
+            resp.sendRedirect(req.getContextPath() + "/restaurant");
+            return;
+        }
 
-			int partnerId = (order.getDeliveryPartnerId() != null && order.getDeliveryPartnerId() > 0)
-					? order.getDeliveryPartnerId()
-					: 3;
-			deliveryPartner = userDAO.getUser(partnerId);
+        Order order = orderDAO.getOrder(orderId);
 
-			orderItems = orderItemDAO.getAllOrderItemsByOrderID(orderId);
-			if (orderItems != null) {
-				for (OrderItem item : orderItems) {
-					Menu menu = menuDAO.getMenu(item.getMenuId());
-					if (menu != null) {
-						menuById.put(item.getMenuId(), menu);
-					}
-				}
-			}
-		}
+        if (order == null) {
+            resp.sendRedirect(req.getContextPath() + "/orders");
+            return;
+        }
 
-		if (deliveryPartner == null) {
-			deliveryPartner = new User();
-			deliveryPartner.setUsername("Amit Kumar");
-			deliveryPartner.setPhone("+91 98451 23456");
-		}
+        Restaurant restaurant = null;
+        User deliveryPartner = null;
 
-		// Send attributes to JSP
-		req.setAttribute("orderId", orderId);
-		req.setAttribute("order", order);
-		req.setAttribute("restaurant", restaurant);
-		req.setAttribute("deliveryPartner", deliveryPartner);
-		req.setAttribute("orderItems", orderItems);
-		req.setAttribute("menuById", menuById);
+        List<OrderItem> orderItems =
+                orderItemDAO.getAllOrderItemsByOrderID(orderId);
 
-		// Open OrderStatus.jsp
-		RequestDispatcher rd = req.getRequestDispatcher("OrderStatus.jsp");
-		rd.forward(req, resp);
-	}
+        Map<Integer, Menu> menuById = new HashMap<>();
+
+        if (order.getRestaurantId() > 0) {
+            restaurant =
+                    restaurantDAO.getRestaurant(order.getRestaurantId());
+        }
+
+        int partnerId =
+                (order.getDeliveryPartnerId() != null
+                        && order.getDeliveryPartnerId() > 0)
+                        ? order.getDeliveryPartnerId()
+                        : 3;
+
+        deliveryPartner = userDAO.getUser(partnerId);
+
+        if (orderItems != null) {
+            for (OrderItem item : orderItems) {
+                Menu menu = menuDAO.getMenu(item.getMenuId());
+
+                if (menu != null) {
+                    menuById.put(item.getMenuId(), menu);
+                }
+            }
+        }
+
+        // Fallback delivery partner information.
+        if (deliveryPartner == null) {
+            deliveryPartner = new User();
+            deliveryPartner.setUsername("Amit Kumar");
+            deliveryPartner.setPhone("+91 98451 23456");
+        }
+
+        // Pass all order details to OrderStatus.jsp.
+        req.setAttribute("orderId", orderId);
+        req.setAttribute("order", order);
+        req.setAttribute("restaurant", restaurant);
+        req.setAttribute("deliveryPartner", deliveryPartner);
+        req.setAttribute("orderItems", orderItems);
+        req.setAttribute("menuById", menuById);
+
+        RequestDispatcher dispatcher =
+                req.getRequestDispatcher("/OrderStatus.jsp");
+
+        dispatcher.forward(req, resp);
+    }
 }

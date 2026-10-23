@@ -3,24 +3,24 @@
 document.addEventListener("DOMContentLoaded", function() {
     var contextPath = window.QUICK_BITE_CONTEXT || window.QUICK_BITE_CONTEXT_PATH || "";
 
+    // DOM Elements
     var menuGrid = document.getElementById("menuGrid");
-    var menuSearch = document.getElementById("menuSearch");
+    var menuSearch = document.getElementById("menuSearch") || document.querySelector('input[name="search"]');
     var menuCount = document.getElementById("menuCount") || document.querySelector(".items-count-text");
-    var noSearchResults = document.getElementById("noSearchResults");
+    var noSearchResults = document.getElementById("noSearchResults") || document.getElementById("menuInstantEmptyNotice");
 
-    var filterDropdownBtn = document.getElementById("filterDropdownBtn");
-    var filterDropdownMenu = document.getElementById("filterDropdownMenu");
+    var filterToggle = document.getElementById("filter-toggle");
+    var filterDropdownBtn = document.getElementById("filterDropdownBtn") || document.querySelector(".filter-dropdown-btn");
+    var filterDropdownMenu = document.getElementById("filterDropdownMenu") || document.querySelector(".filter-dropdown-menu");
     var applyFiltersBtn = document.getElementById("applyFiltersBtn");
     var resetFiltersBtn = document.getElementById("resetFiltersBtn");
 
     var floatingCartBar = document.getElementById("floatingCartBar") || document.getElementById("menuCartBar");
-    var cartBarCount = document.getElementById("cartBarCount") || document.getElementById("menuCartCount");
-    var cartBarTotal = document.getElementById("cartBarTotal") || document.getElementById("menuCartTotal");
-
-    var cartPreviewPanel = document.getElementById("cartPreviewPanel") || document.getElementById("cartPreview");
-    var previewItemsList = document.getElementById("previewItemsList") || document.getElementById("cartPreviewItems");
-    var btnTogglePreview = document.getElementById("btnTogglePreview") || document.getElementById("cartPreviewToggle");
-    var btnClosePreview = document.getElementById("btnClosePreview") || document.getElementById("closeCartPreview");
+    var cartBarCount = document.getElementById("cartCountVal") || document.getElementById("cartBarCount");
+    var cartBarSummary = document.getElementById("cartBarSummary");
+    var cartPreviewModal = document.getElementById("cartPreviewModal") || document.getElementById("cartPreviewPanel");
+    var previewItemsList = document.getElementById("previewItemsList");
+    var previewTotalAmount = document.getElementById("previewTotalAmount") || document.getElementById("cartBarTotal");
 
     var cartToast = document.getElementById("cartToast");
     var toastTimeout = null;
@@ -37,8 +37,11 @@ document.addEventListener("DOMContentLoaded", function() {
     function showToast(message, isError) {
         if (!cartToast) return;
         cartToast.textContent = message;
-        if (isError) cartToast.classList.add("error");
-        else cartToast.classList.remove("error");
+        if (isError) {
+            cartToast.classList.add("error");
+        } else {
+            cartToast.classList.remove("error");
+        }
         cartToast.hidden = false;
 
         if (toastTimeout) clearTimeout(toastTimeout);
@@ -48,9 +51,14 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // -------------------------------------------------------------
-    // 1. FILTERS & SEARCH (PRESERVED)
+    // 1. FILTERS & SEARCH
     // -------------------------------------------------------------
-    if (filterDropdownBtn && filterDropdownMenu) {
+    function closeDropdown() {
+        if (filterToggle) filterToggle.checked = false;
+        if (filterDropdownMenu) filterDropdownMenu.classList.remove("show");
+    }
+
+    if (filterDropdownBtn && filterDropdownMenu && !filterToggle) {
         filterDropdownBtn.addEventListener("click", function(e) {
             e.stopPropagation();
             filterDropdownMenu.classList.toggle("show");
@@ -58,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         document.addEventListener("click", function(e) {
             if (!filterDropdownMenu.contains(e.target) && e.target !== filterDropdownBtn) {
-                filterDropdownMenu.classList.remove("show");
+                closeDropdown();
             }
         });
     }
@@ -72,71 +80,108 @@ document.addEventListener("DOMContentLoaded", function() {
         var selectedPref = prefInput ? prefInput.value : "all";
 
         var cards = getMenuCards();
-        var visibleCards = [];
+        var visibleCount = 0;
 
         cards.forEach(function(card) {
-            var searchText = (card.dataset.search || card.textContent).toLowerCase();
+            var searchText = (card.dataset.search || card.textContent || "").toLowerCase();
             var foodType = card.dataset.foodType || "veg";
 
             var matchesSearch = !searchTerm || searchText.indexOf(searchTerm) !== -1;
             var matchesPref = true;
 
-            if (selectedPref === "veg") matchesPref = (foodType === "veg");
-            else if (selectedPref === "non-veg") matchesPref = (foodType === "non-veg");
-
-            if (matchesSearch && matchesPref) {
-                card.style.display = "";
-                card.hidden = false;
-                visibleCards.push(card);
-            } else {
-                card.style.display = "none";
-                card.hidden = true;
+            if (selectedPref === "veg") {
+                matchesPref = (foodType === "veg");
+            } else if (selectedPref === "non-veg") {
+                matchesPref = (foodType === "non-veg");
             }
+
+            var isVisible = matchesSearch && matchesPref;
+            card.style.display = isVisible ? "" : "none";
+            card.hidden = !isVisible;
+
+            if (isVisible) visibleCount++;
         });
 
+        // Sorting
         if (selectedSort === "low-high") {
-            visibleCards.sort(function(a, b) {
+            cards.sort(function(a, b) {
                 return (Number(a.dataset.price) || 0) - (Number(b.dataset.price) || 0);
             });
         } else if (selectedSort === "high-low") {
-            visibleCards.sort(function(a, b) {
+            cards.sort(function(a, b) {
                 return (Number(b.dataset.price) || 0) - (Number(a.dataset.price) || 0);
+            });
+        } else {
+            // Restore default order by menu ID
+            cards.sort(function(a, b) {
+                return (Number(a.dataset.menuId) || 0) - (Number(b.dataset.menuId) || 0);
             });
         }
 
-        if (menuGrid && (selectedSort === "low-high" || selectedSort === "high-low")) {
-            visibleCards.forEach(function(card) {
+        if (menuGrid) {
+            cards.forEach(function(card) {
                 menuGrid.appendChild(card);
             });
         }
 
-        if (menuCount) menuCount.textContent = "Showing " + visibleCards.length + " menu items";
-        if (noSearchResults) noSearchResults.style.display = (visibleCards.length === 0) ? "block" : "none";
+        if (menuCount) {
+            menuCount.textContent = "Showing " + visibleCount + " menu items";
+        }
+
+        // Handle empty state notice
+        if (visibleCount === 0) {
+            if (!noSearchResults && menuGrid) {
+                var notice = document.createElement("div");
+                notice.id = "menuInstantEmptyNotice";
+                notice.className = "empty-state-notice";
+                notice.style.cssText = "grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: #7a6e5d;";
+                notice.innerHTML = "<h3>No dishes match your filter</h3><p style='margin: 8px 0 16px;'>Try choosing another preference or clearing the search text.</p><button type='button' class='btn-apply-filters' style='max-width:160px;margin:0 auto;display:inline-block;' onclick='resetMenuFilters()'>Reset Filters</button>";
+                menuGrid.appendChild(notice);
+            } else if (noSearchResults) {
+                noSearchResults.style.display = "block";
+            }
+        } else if (noSearchResults) {
+            noSearchResults.style.display = "none";
+        }
     }
 
-    if (applyFiltersBtn && filterDropdownMenu) {
+    function resetMenuFilters() {
+        var defaultSort = document.querySelector('input[name="sortOption"][value="default"]');
+        if (defaultSort) defaultSort.checked = true;
+
+        var defaultPref = document.querySelector('input[name="prefOption"][value="all"]');
+        if (defaultPref) defaultPref.checked = true;
+
+        if (menuSearch) menuSearch.value = "";
+
+        applyMenuFilters();
+        closeDropdown();
+    }
+
+    if (applyFiltersBtn) {
         applyFiltersBtn.addEventListener("click", function() {
             applyMenuFilters();
-            filterDropdownMenu.classList.remove("show");
+            closeDropdown();
         });
     }
 
     if (resetFiltersBtn) {
         resetFiltersBtn.addEventListener("click", function(e) {
             e.preventDefault();
-            var defaultSort = document.querySelector('input[name="sortOption"][value="default"]');
-            if (defaultSort) defaultSort.checked = true;
-            var defaultPref = document.querySelector('input[name="prefOption"][value="all"]');
-            if (defaultPref) defaultPref.checked = true;
-            if (menuSearch) menuSearch.value = "";
-            applyMenuFilters();
+            resetMenuFilters();
         });
     }
 
-    if (menuSearch) menuSearch.addEventListener("input", applyMenuFilters);
+    if (menuSearch) {
+        menuSearch.addEventListener("input", applyMenuFilters);
+    }
+
+    // Expose filter functions to window for onclick handlers
+    window.applyMenuFilters = applyMenuFilters;
+    window.resetMenuFilters = resetMenuFilters;
 
     // -------------------------------------------------------------
-    // 2. DYNAMIC UI & STEPPER TRANSFORMATION
+    // 2. DYNAMIC UI & CART UPDATES
     // -------------------------------------------------------------
     function updateCartUI(data) {
         if (!data || typeof data !== "object") return;
@@ -145,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var totalAmt = Number(data.totalAmount) || 0;
 
         if (cartBarCount) cartBarCount.textContent = String(totalQty);
-        if (cartBarTotal) cartBarTotal.textContent = formatPrice(totalAmt);
+        if (previewTotalAmount) previewTotalAmount.textContent = "₹" + formatPrice(totalAmt);
 
         if (floatingCartBar) {
             floatingCartBar.hidden = (totalQty <= 0);
@@ -153,48 +198,41 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         var itemMap = new Map();
+        var summaryParts = [];
+
         if (Array.isArray(data.items)) {
             renderCartPreview(data.items);
             data.items.forEach(function(item) {
                 itemMap.set(String(item.menuId), Number(item.quantity) || 0);
+                summaryParts.push((item.name || "Item") + " x" + item.quantity);
             });
         }
 
+        if (cartBarSummary) {
+            cartBarSummary.textContent = summaryParts.join(", ");
+        }
+
+        // Update card stepper displays
         getMenuCards().forEach(function(card) {
             var menuId = card.dataset.menuId;
             var qty = itemMap.get(String(menuId)) || 0;
-            setCardQuantityUI(card, qty);
+            setCardQuantityUI(card, menuId, qty);
         });
     }
 
-    function setCardQuantityUI(card, quantity) {
-        var addForm = card.querySelector(".cart-form");
-        var quantityForm = card.querySelector(".quantity-form");
+    function setCardQuantityUI(card, menuId, quantity) {
+        var addBtn = document.getElementById("addBtn-" + menuId) || card.querySelector(".btn-add-cart, .cart-form");
+        var stepper = document.getElementById("stepper-" + menuId) || card.querySelector(".quantity-stepper-box, .quantity-form");
+        var qtyVal = document.getElementById("qty-val-" + menuId) || (stepper ? stepper.querySelector(".stepper-val, .quantity-value") : null);
 
         if (quantity > 0) {
-            if (addForm) {
-                addForm.style.display = "none";
-                addForm.hidden = true;
-            }
-            if (quantityForm) {
-                quantityForm.style.display = "flex";
-                quantityForm.hidden = false;
-
-                var qtyDisplay = quantityForm.querySelector(".quantity-value");
-                var qtyInput = quantityForm.querySelector('input[name="quantity"]');
-
-                if (qtyDisplay) qtyDisplay.textContent = String(quantity);
-                if (qtyInput) qtyInput.value = String(quantity);
-            }
+            if (addBtn) addBtn.style.display = "none";
+            if (stepper) stepper.style.display = "flex";
+            if (qtyVal) qtyVal.textContent = String(quantity);
         } else {
-            if (addForm) {
-                addForm.style.display = "";
-                addForm.hidden = false;
-            }
-            if (quantityForm) {
-                quantityForm.style.display = "none";
-                quantityForm.hidden = true;
-            }
+            if (addBtn) addBtn.style.display = "";
+            if (stepper) stepper.style.display = "none";
+            if (qtyVal) qtyVal.textContent = "0";
         }
     }
 
@@ -209,16 +247,13 @@ document.addEventListener("DOMContentLoaded", function() {
         previewItemsList.innerHTML = "";
         items.forEach(function(item) {
             var row = document.createElement("div");
-            row.style.display = "flex";
-            row.style.justifyContent = "space-between";
-            row.style.padding = "8px 0";
-            row.style.borderBottom = "1px solid #eee";
+            row.className = "preview-item-row";
+            row.style.cssText = "display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;";
 
             var name = document.createElement("span");
-            name.style.fontWeight = "600";
-            name.textContent = (item.name || "Item") + " × " + item.quantity;
+            name.innerHTML = "<strong>" + (item.name || "Item") + "</strong> × " + item.quantity;
 
-            var subtotal = document.createElement("strong");
+            var subtotal = document.createElement("span");
             subtotal.textContent = "₹" + formatPrice(item.subtotal);
 
             row.appendChild(name);
@@ -230,91 +265,71 @@ document.addEventListener("DOMContentLoaded", function() {
     // -------------------------------------------------------------
     // 3. AJAX SERVER REQUESTS
     // -------------------------------------------------------------
-    function sendCartRequest(form, action, quantity) {
-        if (!form) return;
-        var menuIdInput = form.querySelector('input[name="menuId"]');
-        var menuId = menuIdInput ? menuIdInput.value : "";
-        if (!menuId) return;
-
-        var params = new URLSearchParams();
-        params.append("action", action);
-        params.append("menuId", menuId);
-        params.append("source", "menu");
-        if (quantity !== undefined) {
+    async function sendCartAjax(menuId, action, quantity) {
+        try {
+            var params = new URLSearchParams();
+            params.append("action", action);
+            params.append("menuId", String(menuId));
             params.append("quantity", String(quantity));
-        }
+            params.append("ajax", "true");
+            params.append("source", "menu");
 
-        var requestUrl = form.action || (contextPath + "/cart");
-
-        fetch(requestUrl, {
-            method: "POST",
-            body: params.toString(),
-            credentials: "same-origin",
-            headers: {
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded"
-            }
-        })
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                if (data && data.success !== false) {
-                    updateCartUI(data);
-                    showToast(data.message || "Cart updated!", false);
-                } else {
-                    showToast(data.message || "Could not update cart.", true);
-                }
-            })
-            .catch(function(err) {
-                console.error("Cart Request Error:", err);
-                showToast("Server error updating cart.", true);
+            var response = await fetch(contextPath + "/cart", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: params.toString()
             });
-    }
 
-    // Listen for ADD + clicks
-    document.addEventListener("submit", function(e) {
-        var form = e.target;
-        if (form && form.matches(".cart-form")) {
-            e.preventDefault();
-            sendCartRequest(form, "add");
+            var data = await response.json();
+
+            if (data.conflict) {
+                var popup = document.getElementById("restaurantConflict");
+                var msgEl = document.getElementById("conflictMessageText");
+                if (msgEl) msgEl.textContent = data.message || "You cannot add items from another restaurant.";
+                if (popup) popup.style.display = "flex";
+                return;
+            }
+
+            if (data.success !== false) {
+                updateCartUI(data);
+                showToast(data.message || "Cart updated!", false);
+            } else {
+                showToast(data.message || "Could not update cart.", true);
+            }
+        } catch (err) {
+            console.error("Cart Request Error:", err);
+            showToast("Server error updating cart.", true);
         }
-    });
+    }
 
-    // Listen for Stepper (+ / −) clicks
-    document.addEventListener("click", function(e) {
-        var incBtn = e.target.closest(".quantity-increase");
-        var decBtn = e.target.closest(".quantity-decrease");
+    // Global action helpers compatible with inline JSP onclick attributes
+    window.ajaxCartAction = function(menuId, action, quantity) {
+        sendCartAjax(menuId, action, quantity || 1);
+    };
 
-        if (!incBtn && !decBtn) return;
-        e.preventDefault();
-
-        var form = (incBtn || decBtn).closest(".quantity-form");
-        if (!form) return;
-
-        var qtyInput = form.querySelector('input[name="quantity"]');
-        var qtyDisplay = form.querySelector(".quantity-value");
-        var currentQty = qtyInput ? Number(qtyInput.value) : Number(qtyDisplay ? qtyDisplay.textContent : 0);
-
-        var newQty = incBtn ? currentQty + 1 : currentQty - 1;
+    window.ajaxCartStep = function(menuId, delta) {
+        var qtyVal = document.getElementById("qty-val-" + menuId);
+        var current = parseInt(qtyVal ? qtyVal.textContent : "0", 10) || 0;
+        var newQty = Math.max(0, current + delta);
         var action = (newQty <= 0) ? "remove" : "update";
+        sendCartAjax(menuId, action, newQty);
+    };
 
-        sendCartRequest(form, action, newQty);
-    });
+    // Modal helpers
+    window.openCartPreview = function() {
+        if (cartPreviewModal) cartPreviewModal.style.display = "flex";
+    };
 
-    // Cart preview drawer controls
-    if (btnTogglePreview && cartPreviewPanel) {
-        btnTogglePreview.addEventListener("click", function() {
-            cartPreviewPanel.hidden = !cartPreviewPanel.hidden;
-            cartPreviewPanel.style.display = cartPreviewPanel.hidden ? "none" : "block";
-        });
-    }
+    window.closeCartPreview = function() {
+        if (cartPreviewModal) cartPreviewModal.style.display = "none";
+    };
 
-    if (btnClosePreview && cartPreviewPanel) {
-        btnClosePreview.addEventListener("click", function() {
-            cartPreviewPanel.hidden = true;
-            cartPreviewPanel.style.display = "none";
-        });
-    }
+    window.closeConflictPopup = function() {
+        var popup = document.getElementById("restaurantConflict");
+        if (popup) popup.style.display = "none";
+    };
 });

@@ -88,11 +88,20 @@ public class ProfileController extends HttpServlet {
 
         req.setCharacterEncoding("UTF-8");
 
+        boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(req.getHeader("X-Requested-With"))
+                || "true".equalsIgnoreCase(req.getParameter("ajax"));
+
         HttpSession session = req.getSession(false);
 
         // Check whether the user is logged in.
         if (session == null || session.getAttribute("user") == null) {
-            resp.sendRedirect(req.getContextPath() + "/login");
+            if (isAjax) {
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding("UTF-8");
+                resp.getWriter().write("{\"success\":false,\"message\":\"Session expired. Please login again.\"}");
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/login");
+            }
             return;
         }
 
@@ -109,8 +118,14 @@ public class ProfileController extends HttpServlet {
                 || phone == null || phone.trim().isEmpty()
                 || address == null || address.trim().isEmpty()) {
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/profile?status=error");
+            if (isAjax) {
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding("UTF-8");
+                resp.getWriter().write("{\"success\":false,\"message\":\"All profile fields are required.\"}");
+            } else {
+                resp.sendRedirect(
+                        req.getContextPath() + "/profile?status=error");
+            }
             return;
         }
 
@@ -131,16 +146,45 @@ public class ProfileController extends HttpServlet {
                 session.setAttribute("user", updatedUser);
             } else {
                 session.setAttribute("user", currentUser);
+                updatedUser = currentUser;
             }
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/profile?status=success");
+            if (isAjax) {
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding("UTF-8");
+                String json = "{"
+                        + "\"success\":true,"
+                        + "\"message\":\"Profile updated successfully!\","
+                        + "\"username\":\"" + escapeJson(updatedUser.getUsername()) + "\","
+                        + "\"email\":\"" + escapeJson(updatedUser.getEmail()) + "\","
+                        + "\"phone\":\"" + escapeJson(updatedUser.getPhone()) + "\","
+                        + "\"address\":\"" + escapeJson(updatedUser.getAddress()) + "\""
+                        + "}";
+                resp.getWriter().write(json);
+            } else {
+                resp.sendRedirect(
+                        req.getContextPath() + "/profile?status=success");
+            }
 
         } catch (Exception e) {
             log("Unable to update user profile.", e);
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/profile?status=error");
+            if (isAjax) {
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding("UTF-8");
+                resp.getWriter().write("{\"success\":false,\"message\":\"Unable to update profile. Please try again.\"}");
+            } else {
+                resp.sendRedirect(
+                        req.getContextPath() + "/profile?status=error");
+            }
         }
+    }
+
+    private String escapeJson(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\")
+                  .replace("\"", "\\\"")
+                  .replace("\r", "\\r")
+                  .replace("\n", "\\n");
     }
 }

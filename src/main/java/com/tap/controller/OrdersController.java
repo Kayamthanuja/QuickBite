@@ -28,7 +28,6 @@ import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/orders")
 public class OrdersController extends HttpServlet {
-
     private static final long serialVersionUID = 1L;
 
     private OrderDAO orderDAO;
@@ -56,35 +55,62 @@ public class OrdersController extends HttpServlet {
             return;
         }
 
-        User user = (User) session.getAttribute("user");
+        User loggedInUser = (User) session.getAttribute("user");
 
         try {
-            int userId = user.getUserId();
+            int targetUserId = loggedInUser.getUserId();
+            String requestedUserId = request.getParameter("userId");
 
-            List<Order> orders = orderDAO.getAllOrdersByUserID(userId);
+            /*
+             * Customers can only view their own orders.
+             * An admin may specify another user's ID.
+             */
+            if (requestedUserId != null && !requestedUserId.trim().isEmpty()) {
+                String role = loggedInUser.getRole();
+
+                if (role == null || !role.equalsIgnoreCase("admin")) {
+                    response.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "You are not allowed to view another user's orders."
+                    );
+                    return;
+                }
+
+                try {
+                    targetUserId = Integer.parseInt(requestedUserId);
+                    if (targetUserId <= 0) {
+                        response.sendError(
+                            HttpServletResponse.SC_BAD_REQUEST,
+                            "Invalid user ID."
+                        );
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    response.sendError(
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid user ID."
+                    );
+                    return;
+                }
+            }
+
+            List<Order> orders = orderDAO.getAllOrdersByUserID(targetUserId);
 
             if (orders == null) {
                 orders = new ArrayList<>();
             }
 
-            Map<Integer, Restaurant> restaurantByOrderId =
-                    new HashMap<>();
-
+            Map<Integer, Restaurant> restaurantByOrderId = new HashMap<>();
             Map<Integer, List<OrderItem>> orderItemsByOrderId =
                     new LinkedHashMap<>();
-
             Map<Integer, Menu> menuById = new HashMap<>();
 
             for (Order order : orders) {
-
-                // Load restaurant information for this order.
                 Restaurant restaurant =
                         restaurantDAO.getRestaurant(order.getRestaurantId());
 
-                restaurantByOrderId.put(
-                        order.getOrderId(), restaurant);
+                restaurantByOrderId.put(order.getOrderId(), restaurant);
 
-                // Load all items belonging to this order.
                 List<OrderItem> items =
                         orderItemDAO.getAllOrderItemsByOrderID(
                                 order.getOrderId());
@@ -95,9 +121,7 @@ public class OrdersController extends HttpServlet {
 
                 orderItemsByOrderId.put(order.getOrderId(), items);
 
-                // Load food details for each ordered item.
                 for (OrderItem item : items) {
-
                     int menuId = item.getMenuId();
 
                     if (!menuById.containsKey(menuId)) {
@@ -108,18 +132,23 @@ public class OrdersController extends HttpServlet {
             }
 
             request.setAttribute("orders", orders);
-            request.setAttribute(
-                    "restaurantByOrderId", restaurantByOrderId);
-            request.setAttribute(
-                    "orderItemsByOrderId", orderItemsByOrderId);
+            request.setAttribute("restaurantByOrderId",
+                    restaurantByOrderId);
+            request.setAttribute("orderItemsByOrderId",
+                    orderItemsByOrderId);
             request.setAttribute("menuById", menuById);
+
+            // Allows the JSP to identify whose history is being displayed.
+            request.setAttribute("viewedUserId", targetUserId);
+            request.setAttribute("isAdminOrderView",
+                    "admin".equalsIgnoreCase(loggedInUser.getRole())
+                    && requestedUserId != null);
 
             request.getRequestDispatcher("/Orders.jsp")
                    .forward(request, response);
 
         } catch (Exception e) {
-            throw new ServletException(
-                    "Unable to load order history.", e);
+            throw new ServletException("Unable to load order history.", e);
         }
     }
 }

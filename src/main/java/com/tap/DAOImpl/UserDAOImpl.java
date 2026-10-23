@@ -266,12 +266,20 @@ public class UserDAOImpl implements UserDAO {
 
     @Override
     public boolean updatePassword(String email, String newPassword) {
-        String query = "UPDATE user SET password = ? WHERE LOWER(email) = LOWER(?)";
+
+        String query =
+                "UPDATE user SET password = ? WHERE LOWER(email) = LOWER(?)";
+
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+             PreparedStatement preparedStatement =
+                     connection.prepareStatement(query)) {
+
             preparedStatement.setString(1, newPassword);
-            preparedStatement.setString(2, email != null ? email.trim() : "");
-            return preparedStatement.executeUpdate() > 0;
+            preparedStatement.setString(
+                    2, email != null ? email.trim() : "");
+
+            return preparedStatement.executeUpdate() == 1;
+
         } catch (SQLException e) {
             e.printStackTrace();
             return false;

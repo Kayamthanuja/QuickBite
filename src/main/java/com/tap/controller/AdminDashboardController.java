@@ -1,8 +1,8 @@
 package com.tap.controller;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.List;
+import java.util.Locale;
 
 import com.tap.DAO.MenuDAO;
 import com.tap.DAO.OrderDAO;
@@ -27,209 +27,581 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet(urlPatterns = { "/adminDashboard", "/admin/dashboard" })
 public class AdminDashboardController extends HttpServlet {
 
-	private OrderDAO orderDAO;
-	private RestaurantDAO restaurantDAO;
-	private MenuDAO menuDAO;
-	private UserDAO userDAO;
+    private static final long serialVersionUID = 1L;
 
-	@Override
-	public void init() {
-		orderDAO = new OrderDAOImpl();
-		restaurantDAO = new RestaurantDAOImpl();
-		menuDAO = new MenuDAOImpl();
-		userDAO = new UserDAOImpl();
-	}
+    private OrderDAO orderDAO;
+    private RestaurantDAO restaurantDAO;
+    private MenuDAO menuDAO;
+    private UserDAO userDAO;
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
+    @Override
+    public void init() {
+        orderDAO = new OrderDAOImpl();
+        restaurantDAO = new RestaurantDAOImpl();
+        menuDAO = new MenuDAOImpl();
+        userDAO = new UserDAOImpl();
+    }
 
-		HttpSession session = req.getSession(false);
-		if (session == null || session.getAttribute("user") == null) {
-			resp.sendRedirect(req.getContextPath() + "/login?error=adminRequired");
-			return;
-		}
+    private boolean isAdmin(HttpServletRequest req,
+            HttpServletResponse resp) throws IOException {
 
-		User currentUser = (User) session.getAttribute("user");
-		if (!currentUser.isAdmin()) {
-			resp.sendRedirect(req.getContextPath() + "/restaurant?error=unauthorized");
-			return;
-		}
+        HttpSession session = req.getSession(false);
 
-		List<Order> allOrders = orderDAO.getAllOrders();
-		List<Restaurant> allRestaurants = restaurantDAO.getAllRestaurants();
-		List<Menu> allMenus = menuDAO.getAllMenus();
-		List<User> allUsers = userDAO.getAllUsers();
-		List<User> deliveryPartners = userDAO.getUsersByRole("delivery agent");
-		if (deliveryPartners == null || deliveryPartners.isEmpty()) {
-			deliveryPartners = userDAO.getUsersByRole("delivery partner");
-		}
+        if (session == null || session.getAttribute("user") == null) {
+            resp.sendRedirect(req.getContextPath()
+                    + "/login?error=adminRequired");
+            return false;
+        }
 
-		// Calculate KPIs
-		double totalRevenue = 0.0;
-		int activeRestaurantsCount = 0;
-		int pendingOrdersCount = 0;
+        Object sessionUser = session.getAttribute("user");
 
-		if (allOrders != null) {
-			for (Order order : allOrders) {
-				totalRevenue += order.getTotalAmount();
-				String s = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
-				if (!s.contains("DELIVER") && !s.contains("CANCEL")) {
-					pendingOrdersCount++;
-				}
-			}
-		}
+        if (!(sessionUser instanceof User)
+                || !((User) sessionUser).isAdmin()) {
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "Admin privileges required.");
+            return false;
+        }
 
-		if (allRestaurants != null) {
-			for (Restaurant r : allRestaurants) {
-				if (r.isActive()) {
-					activeRestaurantsCount++;
-				}
-			}
-		}
+        return true;
+    }
 
-		req.setAttribute("orders", allOrders);
-		req.setAttribute("restaurants", allRestaurants);
-		req.setAttribute("menus", allMenus);
-		req.setAttribute("users", allUsers);
-		req.setAttribute("deliveryPartners", deliveryPartners);
-		req.setAttribute("totalRevenue", totalRevenue);
-		req.setAttribute("activeRestaurantsCount", activeRestaurantsCount);
-		req.setAttribute("pendingOrdersCount", pendingOrdersCount);
+    @Override
+    protected void doGet(HttpServletRequest req,
+            HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		req.getRequestDispatcher("/AdminDashboard.jsp").forward(req, resp);
-	}
+        if (!isAdmin(req, resp)) {
+            return;
+        }
 
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
+        List<Order> allOrders = orderDAO.getAllOrders();
+        List<Restaurant> allRestaurants =
+                restaurantDAO.getAllRestaurants();
+        List<Menu> allMenus = menuDAO.getAllMenus();
+        List<User> allUsers = userDAO.getAllUsers();
 
-		HttpSession session = req.getSession(false);
-		if (session == null || session.getAttribute("user") == null) {
-			resp.sendRedirect(req.getContextPath() + "/login");
-			return;
-		}
+        List<User> deliveryPartners =
+                userDAO.getUsersByRole("delivery agent");
 
-		User currentUser = (User) session.getAttribute("user");
-		if (!currentUser.isAdmin()) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin privileges required.");
-			return;
-		}
+        if (deliveryPartners == null || deliveryPartners.isEmpty()) {
+            deliveryPartners =
+                    userDAO.getUsersByRole("delivery partner");
+        }
 
-		String action = req.getParameter("action");
-		boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(req.getHeader("X-Requested-With"))
-				|| "application/json".equalsIgnoreCase(req.getHeader("Accept"))
-				|| "true".equalsIgnoreCase(req.getParameter("ajax"));
+        double totalRevenue = 0.0;
+        int activeRestaurantsCount = 0;
+        int pendingOrdersCount = 0;
 
-		try {
-			if ("updateOrderStatus".equalsIgnoreCase(action)) {
-				int orderId = Integer.parseInt(req.getParameter("orderId"));
-				String newStatus = req.getParameter("status");
-				if (newStatus != null && !newStatus.isBlank()) {
-					orderDAO.updateStatus(orderId, newStatus.trim().toUpperCase());
-				}
+        if (allOrders != null) {
+            for (Order order : allOrders) {
+                totalRevenue += order.getTotalAmount();
 
-				if (isAjax) {
-					resp.setContentType("application/json");
-					resp.getWriter().print("{\"success\":true,\"orderId\":" + orderId + ",\"status\":\"" + newStatus + "\"}");
-					return;
-				}
+                String status = order.getStatus() == null
+                        ? ""
+                        : order.getStatus().toUpperCase(Locale.ROOT);
 
-			} else if ("assignPartner".equalsIgnoreCase(action)) {
-				int orderId = Integer.parseInt(req.getParameter("orderId"));
-				int partnerId = Integer.parseInt(req.getParameter("partnerId"));
-				orderDAO.assignDeliveryPartner(orderId, partnerId);
+                if (!status.contains("DELIVER")
+                        && !status.contains("CANCEL")) {
+                    pendingOrdersCount++;
+                }
+            }
+        }
 
-				if (isAjax) {
-					resp.setContentType("application/json");
-					resp.getWriter().print("{\"success\":true,\"orderId\":" + orderId + ",\"partnerId\":" + partnerId + "}");
-					return;
-				}
+        if (allRestaurants != null) {
+            for (Restaurant restaurant : allRestaurants) {
+                if (restaurant.isActive()) {
+                    activeRestaurantsCount++;
+                }
+            }
+        }
 
-			} else if ("toggleRestaurant".equalsIgnoreCase(action)) {
-				int restaurantId = Integer.parseInt(req.getParameter("restaurantId"));
-				Restaurant r = restaurantDAO.getRestaurant(restaurantId);
-				if (r != null) {
-					r.setActive(!r.isActive());
-					restaurantDAO.updateRestaurant(r);
-				}
+        req.setAttribute("orders", allOrders);
+        req.setAttribute("restaurants", allRestaurants);
+        req.setAttribute("menus", allMenus);
+        req.setAttribute("users", allUsers);
+        req.setAttribute("deliveryPartners", deliveryPartners);
+        req.setAttribute("totalRevenue", totalRevenue);
+        req.setAttribute("activeRestaurantsCount",
+                activeRestaurantsCount);
+        req.setAttribute("pendingOrdersCount", pendingOrdersCount);
 
-				if (isAjax) {
-					resp.setContentType("application/json");
-					resp.getWriter().print("{\"success\":true,\"restaurantId\":" + restaurantId + ",\"isActive\":" + (r != null && r.isActive()) + "}");
-					return;
-				}
+        req.getRequestDispatcher("/AdminDashboard.jsp")
+                .forward(req, resp);
+    }
 
-			} else if ("addRestaurant".equalsIgnoreCase(action)) {
-				String name = req.getParameter("name");
-				String cuisine = req.getParameter("cuisineType");
-				String deliveryTime = req.getParameter("deliveryTime");
-				String address = req.getParameter("address");
-				String imagePath = req.getParameter("imagePath");
-				double rating = 4.5;
-				try {
-					rating = Double.parseDouble(req.getParameter("rating"));
-				} catch (Exception ignored) {
-				}
+    @Override
+    protected void doPost(HttpServletRequest req,
+            HttpServletResponse resp)
+            throws ServletException, IOException {
 
-				Restaurant newRest = new Restaurant();
-				newRest.setName(name);
-				newRest.setCuisineType(cuisine != null ? cuisine : "Multi-Cuisine");
-				newRest.setDeliveryTime(deliveryTime != null ? deliveryTime : "30-40 mins");
-				newRest.setAddress(address != null ? address : "Bangalore");
-				newRest.setRating(rating);
-				newRest.setActive(true);
-				newRest.setAdminUserId(currentUser.getUserId());
-				newRest.setImagePath(imagePath != null && !imagePath.isBlank()
-						? imagePath
-						: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80");
+        if (!isAdmin(req, resp)) {
+            return;
+        }
 
-				restaurantDAO.addRestaurant(newRest);
+        HttpSession session = req.getSession(false);
+        User currentUser = (User) session.getAttribute("user");
+        String action = req.getParameter("action");
 
-			} else if ("toggleMenu".equalsIgnoreCase(action)) {
-				int menuId = Integer.parseInt(req.getParameter("menuId"));
-				Menu m = menuDAO.getMenu(menuId);
-				if (m != null) {
-					m.setAvailable(!m.isAvailable());
-					menuDAO.updateMenu(m);
-				}
+        boolean isAjax =
+                "XMLHttpRequest".equalsIgnoreCase(
+                        req.getHeader("X-Requested-With"))
+                || (req.getHeader("Accept") != null
+                        && req.getHeader("Accept")
+                                .toLowerCase(Locale.ROOT)
+                                .contains("application/json"))
+                || "true".equalsIgnoreCase(req.getParameter("ajax"));
 
-				if (isAjax) {
-					resp.setContentType("application/json");
-					resp.getWriter().print("{\"success\":true,\"menuId\":" + menuId + ",\"isAvailable\":" + (m != null && m.isAvailable()) + "}");
-					return;
-				}
+        try {
+            if ("deleteUser".equalsIgnoreCase(action)) {
 
-			} else if ("addMenu".equalsIgnoreCase(action)) {
-				int restaurantId = Integer.parseInt(req.getParameter("restaurantId"));
-				String itemName = req.getParameter("itemName");
-				String description = req.getParameter("description");
-				double price = Double.parseDouble(req.getParameter("price"));
-				String imagePath = req.getParameter("imagePath");
+                int userId = parsePositiveInt(req, "userId");
 
-				Menu newMenu = new Menu();
-				newMenu.setRestaurantId(restaurantId);
-				newMenu.setItemName(itemName);
-				newMenu.setDescription(description != null ? description : "");
-				newMenu.setPrice(price);
-				newMenu.setAvailable(true);
-				newMenu.setImagePath(imagePath != null && !imagePath.isBlank()
-						? imagePath
-						: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80");
+                if (currentUser.getUserId() == userId) {
+                    throw new IllegalArgumentException(
+                            "You cannot delete your own admin account.");
+                }
 
-				menuDAO.addMenu(newMenu);
-			}
+                User userToDelete = null;
+                List<User> allUsers = userDAO.getAllUsers();
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			if (isAjax) {
-				resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				resp.setContentType("application/json");
-				resp.getWriter().print("{\"success\":false,\"message\":\"" + e.getMessage() + "\"}");
-				return;
-			}
-		}
+                if (allUsers != null) {
+                    for (User user : allUsers) {
+                        if (user.getUserId() == userId) {
+                            userToDelete = user;
+                            break;
+                        }
+                    }
+                }
 
-		resp.sendRedirect(req.getContextPath() + "/adminDashboard");
-	}
+                if (userToDelete == null) {
+                    throw new IllegalArgumentException(
+                            "User not found or already deleted.");
+                }
+
+                userDAO.deleteUser(userId);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"userId\":"
+                                    + userId + "}");
+                    return;
+                }
+
+            } else if ("updateOrderStatus".equalsIgnoreCase(action)) {
+
+                int orderId = parsePositiveInt(req, "orderId");
+                String status = required(req, "status")
+                        .toUpperCase(Locale.ROOT);
+
+                orderDAO.updateStatus(orderId, status);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"orderId\":"
+                                    + orderId + "}");
+                    return;
+                }
+
+            } else if ("assignPartner".equalsIgnoreCase(action)) {
+
+                int orderId = parsePositiveInt(req, "orderId");
+                int partnerId = parsePositiveInt(req, "partnerId");
+
+                orderDAO.assignDeliveryPartner(orderId, partnerId);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"orderId\":"
+                                    + orderId + ",\"partnerId\":"
+                                    + partnerId + "}");
+                    return;
+                }
+
+            } else if ("toggleRestaurant".equalsIgnoreCase(action)) {
+
+                int restaurantId =
+                        parsePositiveInt(req, "restaurantId");
+
+                Restaurant restaurant =
+                        restaurantDAO.getRestaurant(restaurantId);
+
+                if (restaurant == null) {
+                    throw new IllegalArgumentException(
+                            "Restaurant not found.");
+                }
+
+                restaurant.setActive(!restaurant.isActive());
+                restaurantDAO.updateRestaurant(restaurant);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"restaurantId\":"
+                                    + restaurantId
+                                    + ",\"isActive\":"
+                                    + restaurant.isActive() + "}");
+                    return;
+                }
+
+            } else if ("addRestaurant".equalsIgnoreCase(action)) {
+
+                Restaurant restaurant = new Restaurant();
+
+                restaurant.setName(required(req, "name"));
+                restaurant.setCuisineType(defaultValue(
+                        req.getParameter("cuisineType"),
+                        "Multi-Cuisine"));
+                restaurant.setDeliveryTime(defaultValue(
+                        req.getParameter("deliveryTime"),
+                        "30-40 mins"));
+                restaurant.setAddress(defaultValue(
+                        req.getParameter("address"),
+                        "Bangalore"));
+                restaurant.setRating(
+                        parseRating(req.getParameter("rating")));
+
+                String imagePath = req.getParameter("imagePath");
+
+                restaurant.setImagePath(
+                        imagePath == null || imagePath.isBlank()
+                                ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80"
+                                : imagePath.trim());
+
+                String status = req.getParameter("status");
+                restaurant.setActive(
+                        !"deactivated".equalsIgnoreCase(status)
+                        && !"closed".equalsIgnoreCase(status));
+
+                restaurant.setAdminUserId(currentUser.getUserId());
+                restaurantDAO.addRestaurant(restaurant);
+
+            } else if ("updateRestaurant".equalsIgnoreCase(action)) {
+
+                int restaurantId =
+                        parsePositiveInt(req, "restaurantId");
+
+                Restaurant restaurant =
+                        restaurantDAO.getRestaurant(restaurantId);
+
+                if (restaurant == null) {
+                    throw new IllegalArgumentException(
+                            "Restaurant not found.");
+                }
+
+                restaurant.setName(required(req, "name"));
+                restaurant.setCuisineType(defaultValue(
+                        req.getParameter("cuisineType"),
+                        "Multi-Cuisine"));
+                restaurant.setDeliveryTime(defaultValue(
+                        req.getParameter("deliveryTime"),
+                        "30-40 mins"));
+                restaurant.setAddress(defaultValue(
+                        req.getParameter("address"),
+                        "Bangalore"));
+                restaurant.setRating(
+                        parseRating(req.getParameter("rating")));
+
+                String imagePath = req.getParameter("imagePath");
+
+                if (imagePath != null) {
+                    restaurant.setImagePath(imagePath.trim());
+                }
+
+                String status = req.getParameter("status");
+                restaurant.setActive(
+                        "active".equalsIgnoreCase(status)
+                        || "open".equalsIgnoreCase(status));
+
+                restaurantDAO.updateRestaurant(restaurant);
+
+            } else if ("toggleMenu".equalsIgnoreCase(action)) {
+
+                int menuId = parsePositiveInt(req, "menuId");
+                Menu menu = menuDAO.getMenu(menuId);
+
+                if (menu == null) {
+                    throw new IllegalArgumentException(
+                            "Menu item not found.");
+                }
+
+                menu.setAvailable(!menu.isAvailable());
+                menuDAO.updateMenu(menu);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"menuId\":"
+                                    + menuId + ",\"isAvailable\":"
+                                    + menu.isAvailable() + "}");
+                    return;
+                }
+
+            } else if ("addMenu".equalsIgnoreCase(action)) {
+
+                int restaurantId =
+                        parsePositiveInt(req, "restaurantId");
+
+                Restaurant restaurant =
+                        restaurantDAO.getRestaurant(restaurantId);
+
+                if (restaurant == null) {
+                    throw new IllegalArgumentException(
+                            "Selected restaurant does not exist.");
+                }
+
+                Menu menu = new Menu();
+                menu.setRestaurantId(restaurantId);
+                menu.setItemName(required(req, "itemName"));
+                menu.setDescription(defaultValue(
+                        req.getParameter("description"), ""));
+                menu.setPrice(parsePositivePrice(req, "price"));
+                menu.setAvailable(Boolean.parseBoolean(
+                        defaultValue(
+                                req.getParameter("isAvailable"),
+                                "true")));
+
+                String imagePath = req.getParameter("imagePath");
+                menu.setImagePath(
+                        imagePath == null || imagePath.isBlank()
+                                ? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"
+                                : imagePath.trim());
+
+                menuDAO.addMenu(menu);
+
+            } else if ("updateMenu".equalsIgnoreCase(action)) {
+
+                int menuId = parsePositiveInt(req, "menuId");
+                int restaurantId =
+                        parsePositiveInt(req, "restaurantId");
+
+                Menu menu = menuDAO.getMenu(menuId);
+
+                if (menu == null) {
+                    throw new IllegalArgumentException(
+                            "Menu item not found.");
+                }
+
+                Restaurant restaurant =
+                        restaurantDAO.getRestaurant(restaurantId);
+
+                if (restaurant == null) {
+                    throw new IllegalArgumentException(
+                            "Selected restaurant does not exist.");
+                }
+
+                String itemName = required(req, "itemName");
+                double price = parsePositivePrice(req, "price");
+                String description = defaultValue(
+                        req.getParameter("description"), "");
+                String imagePath = defaultValue(
+                        req.getParameter("imagePath"), "");
+
+                String availability = required(req, "isAvailable");
+
+                if (!"true".equalsIgnoreCase(availability)
+                        && !"false".equalsIgnoreCase(availability)) {
+                    throw new IllegalArgumentException(
+                            "Choose a valid availability status.");
+                }
+
+                menu.setRestaurantId(restaurantId);
+                menu.setItemName(itemName);
+                menu.setDescription(description);
+                menu.setPrice(price);
+                menu.setImagePath(imagePath);
+                menu.setAvailable(
+                        Boolean.parseBoolean(availability));
+
+                menuDAO.updateMenu(menu);
+
+                if (isAjax) {
+                    String json = "{\"success\":true,"
+                            + "\"menuId\":" + menu.getMenuId() + ","
+                            + "\"restaurantId\":"
+                            + menu.getRestaurantId() + ","
+                            + "\"restaurantName\":\""
+                            + escapeJson(restaurant.getName()) + "\","
+                            + "\"itemName\":\""
+                            + escapeJson(menu.getItemName()) + "\","
+                            + "\"description\":\""
+                            + escapeJson(menu.getDescription()) + "\","
+                            + "\"imagePath\":\""
+                            + escapeJson(menu.getImagePath()) + "\","
+                            + "\"price\":" + menu.getPrice() + ","
+                            + "\"isAvailable\":"
+                            + menu.isAvailable() + "}";
+
+                    sendJson(resp, 200, json);
+                    return;
+                }
+
+            } else if ("deleteMenu".equalsIgnoreCase(action)) {
+
+                int menuId = parsePositiveInt(req, "menuId");
+                Menu menu = menuDAO.getMenu(menuId);
+
+                if (menu == null) {
+                    throw new IllegalArgumentException(
+                            "Menu item not found or already deleted.");
+                }
+
+                menuDAO.deleteMenu(menuId);
+
+                if (isAjax) {
+                    sendJson(resp, 200,
+                            "{\"success\":true,\"menuId\":"
+                                    + menuId + "}");
+                    return;
+                }
+
+            } else {
+                throw new IllegalArgumentException(
+                        "Unknown admin action.");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            String message = e.getMessage();
+
+            if (message == null || message.isBlank()) {
+                message = "Could not complete the requested action.";
+            }
+
+            if (isAjax) {
+                sendJson(resp, 400,
+                        "{\"success\":false,\"message\":\""
+                                + escapeJson(message) + "\"}");
+                return;
+            }
+
+            req.getSession().setAttribute("adminError",
+                    "Could not complete the requested action.");
+        }
+
+        resp.sendRedirect(req.getContextPath() + "/adminDashboard");
+    }
+
+    private void sendJson(HttpServletResponse resp,
+            int status, String json) throws IOException {
+
+        resp.setStatus(status);
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        resp.setHeader("Cache-Control", "no-store");
+        resp.getWriter().write(json);
+    }
+
+    private String required(HttpServletRequest req, String name) {
+        String value = req.getParameter(name);
+
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(
+                    name + " is required.");
+        }
+
+        return value.trim();
+    }
+
+    private String defaultValue(String value, String fallback) {
+        return value == null || value.isBlank()
+                ? fallback
+                : value.trim();
+    }
+
+    private int parsePositiveInt(HttpServletRequest req, String name) {
+        String value = required(req, name);
+
+        try {
+            int number = Integer.parseInt(value);
+
+            if (number <= 0) {
+                throw new IllegalArgumentException(
+                        name + " must be a positive number.");
+            }
+
+            return number;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    name + " must be a valid number.");
+        }
+    }
+
+    private double parsePositivePrice(HttpServletRequest req,
+            String name) {
+
+        String value = required(req, name);
+
+        try {
+            double price = Double.parseDouble(value);
+
+            if (!Double.isFinite(price) || price <= 0) {
+                throw new IllegalArgumentException(
+                        "Price must be greater than zero.");
+            }
+
+            return price;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Enter a valid price.");
+        }
+    }
+
+    private double parseRating(String value) {
+        try {
+            double rating = Double.parseDouble(value);
+
+            if (!Double.isFinite(rating)
+                    || rating < 1.0 || rating > 5.0) {
+                return 4.5;
+            }
+
+            return rating;
+        } catch (Exception e) {
+            return 4.5;
+        }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+
+            switch (c) {
+                case '"':
+                    result.append("\\\"");
+                    break;
+                case '\\':
+                    result.append("\\\\");
+                    break;
+                case '\b':
+                    result.append("\\b");
+                    break;
+                case '\f':
+                    result.append("\\f");
+                    break;
+                case '\n':
+                    result.append("\\n");
+                    break;
+                case '\r':
+                    result.append("\\r");
+                    break;
+                case '\t':
+                    result.append("\\t");
+                    break;
+                default:
+                    if (c < 0x20) {
+                        result.append(String.format(
+                                "\\u%04x", (int) c));
+                    } else {
+                        result.append(c);
+                    }
+            }
+        }
+
+        return result.toString();
+    }
 }

@@ -1,3 +1,4 @@
+
 package com.tap.DAOImpl;
 
 import java.sql.Connection;
@@ -33,170 +34,144 @@ public class MenuDAOImpl implements MenuDAO {
     private static final String DELETE_QUERY =
             "DELETE FROM menu WHERE menuId = ?";
 
-
     @Override
     public void addMenu(Menu menu) {
-
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
-                     connection.prepareStatement(INSERT_QUERY)) {
+             PreparedStatement ps = connection.prepareStatement(INSERT_QUERY)) {
 
-            preparedStatement.setInt(1, menu.getRestaurantId());
-            preparedStatement.setString(2, menu.getItemName());
-            preparedStatement.setString(3, menu.getDescription());
-            preparedStatement.setDouble(4, menu.getPrice());
-            preparedStatement.setBoolean(5, menu.isAvailable());
-            preparedStatement.setString(6, menu.getImagePath());
+            ps.setInt(1, menu.getRestaurantId());
+            ps.setString(2, menu.getItemName());
+            ps.setString(3, menu.getDescription());
+            ps.setDouble(4, menu.getPrice());
+            ps.setBoolean(5, menu.isAvailable());
+            ps.setString(6, menu.getImagePath());
 
-            preparedStatement.executeUpdate();
+            ps.executeUpdate();
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to add menu item.", e);
         }
     }
-
 
     @Override
     public Menu getMenu(int menuId) {
-
-        Menu menu = null;
-
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(SELECT_BY_ID_QUERY)) {
 
-            preparedStatement.setInt(1, menuId);
+            ps.setInt(1, menuId);
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-
-                if (resultSet.next()) {
-
-                    menu = new Menu();
-
-                    menu.setMenuId(resultSet.getInt("menuId"));
-                    menu.setRestaurantId(resultSet.getInt("restaurantId"));
-                    menu.setItemName(resultSet.getString("itemName"));
-                    menu.setDescription(resultSet.getString("description"));
-                    menu.setPrice(resultSet.getDouble("price"));
-                    menu.setAvailable(resultSet.getBoolean("isAvailable"));
-                    menu.setImagePath(resultSet.getString("imagePath"));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapMenu(rs);
                 }
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to retrieve menu item.", e);
         }
 
-        return menu;
+        return null;
     }
-
 
     @Override
     public List<Menu> getAllMenus() {
-
         List<Menu> menuList = new ArrayList<>();
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(SELECT_ALL_QUERY);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
+             ResultSet rs = ps.executeQuery()) {
 
-            while (resultSet.next()) {
-
-                Menu menu = new Menu();
-
-                menu.setMenuId(resultSet.getInt("menuId"));
-                menu.setRestaurantId(resultSet.getInt("restaurantId"));
-                menu.setItemName(resultSet.getString("itemName"));
-                menu.setDescription(resultSet.getString("description"));
-                menu.setPrice(resultSet.getDouble("price"));
-                menu.setAvailable(resultSet.getBoolean("isAvailable"));
-                menu.setImagePath(resultSet.getString("imagePath"));
-
-                menuList.add(menu);
+            while (rs.next()) {
+                menuList.add(mapMenu(rs));
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to retrieve menu items.", e);
         }
 
         return menuList;
     }
 
-
     @Override
     public List<Menu> getMenuByRestaurantID(int restaurantId) {
-
         List<Menu> menuList = new ArrayList<>();
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(SELECT_BY_RESTAURANT_ID_QUERY)) {
 
-            preparedStatement.setInt(1, restaurantId);
+            ps.setInt(1, restaurantId);
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-
-                while (resultSet.next()) {
-
-                    Menu menu = new Menu();
-
-                    menu.setMenuId(resultSet.getInt("menuId"));
-                    menu.setRestaurantId(resultSet.getInt("restaurantId"));
-                    menu.setItemName(resultSet.getString("itemName"));
-                    menu.setDescription(resultSet.getString("description"));
-                    menu.setPrice(resultSet.getDouble("price"));
-                    menu.setAvailable(resultSet.getBoolean("isAvailable"));
-                    menu.setImagePath(resultSet.getString("imagePath"));
-
-                    menuList.add(menu);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    menuList.add(mapMenu(rs));
                 }
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(
+                    "Failed to retrieve menu items for restaurant " + restaurantId, e);
         }
 
         return menuList;
     }
 
-
     @Override
     public void updateMenu(Menu menu) {
-
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
-                     connection.prepareStatement(UPDATE_QUERY)) {
+             PreparedStatement ps = connection.prepareStatement(UPDATE_QUERY)) {
 
-            preparedStatement.setInt(1, menu.getRestaurantId());
-            preparedStatement.setString(2, menu.getItemName());
-            preparedStatement.setString(3, menu.getDescription());
-            preparedStatement.setDouble(4, menu.getPrice());
-            preparedStatement.setBoolean(5, menu.isAvailable());
-            preparedStatement.setString(6, menu.getImagePath());
-            preparedStatement.setInt(7, menu.getMenuId());
+            ps.setInt(1, menu.getRestaurantId());
+            ps.setString(2, menu.getItemName());
+            ps.setString(3, menu.getDescription());
+            ps.setDouble(4, menu.getPrice());
+            ps.setBoolean(5, menu.isAvailable());
+            ps.setString(6, menu.getImagePath());
+            ps.setInt(7, menu.getMenuId());
 
-            preparedStatement.executeUpdate();
+            int rowsUpdated = ps.executeUpdate();
+
+            if (rowsUpdated == 0) {
+                throw new RuntimeException(
+                        "Menu item not found. ID: " + menu.getMenuId());
+            }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to update menu item.", e);
         }
     }
 
-
     @Override
     public void deleteMenu(int menuId) {
-
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
-                     connection.prepareStatement(DELETE_QUERY)) {
+             PreparedStatement ps = connection.prepareStatement(DELETE_QUERY)) {
 
-            preparedStatement.setInt(1, menuId);
+            ps.setInt(1, menuId);
 
-            preparedStatement.executeUpdate();
+            int rowsDeleted = ps.executeUpdate();
+
+            if (rowsDeleted == 0) {
+                throw new RuntimeException("Menu item not found. ID: " + menuId);
+            }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to delete menu item.", e);
         }
+    }
+
+    private Menu mapMenu(ResultSet rs) throws SQLException {
+        Menu menu = new Menu();
+
+        menu.setMenuId(rs.getInt("menuId"));
+        menu.setRestaurantId(rs.getInt("restaurantId"));
+        menu.setItemName(rs.getString("itemName"));
+        menu.setDescription(rs.getString("description"));
+        menu.setPrice(rs.getDouble("price"));
+        menu.setAvailable(rs.getBoolean("isAvailable"));
+        menu.setImagePath(rs.getString("imagePath"));
+
+        return menu;
     }
 }

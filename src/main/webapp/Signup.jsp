@@ -143,7 +143,7 @@
 				<div class="login-text">
 					<span>Already have an account?</span>
 					<a href="<%=request.getContextPath()%>/login" class="login-link" id="loginBackLink">
-						Login as Customer
+						Login 
 					</a>
 				</div>
 

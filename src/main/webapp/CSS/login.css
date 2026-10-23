@@ -462,3 +462,71 @@ body {
 [data-theme="dark"] .register-text {
 	color: #8d95a3 !important;
 }
+
+
+/* =========================================
+   CUSTOMER / ADMIN LOGIN OPTIONS
+   QuickBite theme
+========================================= */
+
+.account-role-options {
+    display: flex;
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.account-role-btn {
+    flex: 1;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--qb-border, #f0dfcb);
+    border-radius: 9px;
+    background: var(--qb-surface, #ffffff);
+    color: var(--qb-text, #3b2418);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.account-role-btn:hover {
+    border-color: var(--qb-orange, #f5a623);
+}
+
+.account-role-btn.active {
+    background: var(--qb-orange, #f5a623);
+    border-color: var(--qb-orange, #f5a623);
+    color: #3b2418;
+}
+
+.admin-login-options {
+    margin-top: 12px;
+}
+
+.admin-login-options .login-methods {
+    margin-top: 12px;
+}
+
+.account-role-btn:focus-visible,
+.login-method-btn:focus-visible {
+    outline: 2px solid var(--qb-orange, #f5a623);
+    outline-offset: 3px;
+}
+
+[data-theme="dark"] .account-role-btn {
+    background: #15181e;
+    border-color: #2c323b;
+    color: #f0f3f6;
+}
+
+[data-theme="dark"] .account-role-btn.active {
+    background: #f5a623;
+    border-color: #f5a623;
+    color: #3b2418;
+}
+
+@media (max-width: 380px) {
+    .account-role-options {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,156 @@
+/* QuickBite Admin Navbar */
+.qb-admin-navbar, .qb-admin-navbar * {
+	box-sizing: border-box;
+}
+
+.qb-admin-navbar {
+	width: 100%;
+	min-height: 76px;
+	padding: 12px 5%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	background: #fffaf2;
+	border-bottom: 1px solid #f0e2d1;
+	box-shadow: 0 3px 12px rgba(75, 45, 24, 0.06);
+	position: relative;
+	z-index: 100;
+	font-family: Arial, sans-serif;
+}
+
+.qb-admin-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
+	color: #4b2e20;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.qb-admin-brand-icon {
+	font-size: 27px;
+	line-height: 1;
+}
+
+.qb-admin-brand-name {
+	font-size: 23px;
+	font-weight: 800;
+	letter-spacing: -0.5px;
+}
+
+.qb-admin-brand-name strong {
+	color: #bd642c;
+	font-weight: 800;
+}
+
+.qb-admin-badge {
+	margin-left: 2px;
+	padding: 6px 10px;
+	border-radius: 6px;
+	background: #ffeadb;
+	color: #bd4e19;
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 1px;
+}
+
+.qb-admin-nav-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 14px;
+}
+
+.qb-admin-profile-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 10px;
+	color: #4b2e20;
+	text-decoration: none;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	transition: background 0.2s, border-color 0.2s;
+}
+
+.qb-admin-profile-link:hover {
+	background: #fff0df;
+	border-color: #f0d8bd;
+}
+
+.qb-admin-avatar {
+	width: 40px;
+	height: 40px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #ffeadb;
+	color: #603a25;
+	font-size: 21px;
+}
+
+.qb-admin-profile-name {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.qb-admin-profile-name strong {
+	color: #4b2e20;
+	font-size: 14px;
+}
+
+.qb-admin-profile-name small {
+	color: #8c7665;
+	font-size: 11px;
+}
+
+.qb-admin-logout {
+	min-height: 44px;
+	padding: 11px 20px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #ff9800;
+	border-radius: 9px;
+	background: #ff9800;
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 700;
+	transition: background 0.2s, transform 0.2s;
+}
+
+.qb-admin-logout:hover {
+	background: #f28c00;
+	border-color: #f28c00;
+	transform: translateY(-1px);
+}
+
+@media ( max-width : 650px) {
+	.qb-admin-navbar {
+		padding: 12px 4%;
+		flex-wrap: wrap;
+	}
+	.qb-admin-brand-name {
+		font-size: 19px;
+	}
+	.qb-admin-badge {
+		font-size: 9px;
+		padding: 5px 7px;
+	}
+	.qb-admin-nav-actions {
+		gap: 5px;
+	}
+	.qb-admin-profile-link {
+		padding: 5px;
+	}
+	.qb-admin-profile-name small {
+		display: none;
+	}
+	.qb-admin-logout {
+		padding: 9px 12px;
+	}
+}

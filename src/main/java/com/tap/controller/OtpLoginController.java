@@ -1,13 +1,11 @@
 package com.tap.controller;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.security.SecureRandom;
 
-import com.tap.DAO.UserDAO;
 import com.tap.DAOImpl.UserDAOImpl;
 import com.tap.model.User;
-import com.tap.util.OtpService;
-import com.tap.util.OtpService.SendResult;
+import com.tap.util.EmailOtpService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -19,100 +17,229 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet("/otpLogin")
 public class OtpLoginController extends HttpServlet {
 
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
+    private static final long serialVersionUID = 1L;
 
-		String action = req.getParameter("action");
+    private static final long OTP_VALIDITY = 5 * 60 * 1000L;
+    private static final int MAX_ATTEMPTS = 5;
 
-		if ("send".equalsIgnoreCase(action)) {
-			sendOtp(req, resp);
-		} else if ("verify".equalsIgnoreCase(action)) {
-			verifyOtp(req, resp);
-		} else {
-			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
-		}
-	}
+    private final UserDAOImpl userDAO = new UserDAOImpl();
+    private final SecureRandom random = new SecureRandom();
 
-	private void sendOtp(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		resp.setContentType("application/json");
-		resp.setCharacterEncoding("UTF-8");
+    @Override
+    protected void doPost(HttpServletRequest req,
+                          HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		String phone = OtpService.normalizePhone(req.getParameter("phone"));
-		PrintWriter out = resp.getWriter();
+        req.setCharacterEncoding("UTF-8");
 
-		if (!OtpService.isValidPhone(phone)) {
-			out.print("{\"success\":false,\"message\":\"Enter a valid 10-digit phone number.\"}");
-			return;
-		}
+        String action = req.getParameter("action");
+        String email = req.getParameter("email");
 
-		UserDAO userDAO = new UserDAOImpl();
-		User user = userDAO.getUserByPhone(phone);
+        email = email == null ? "" : email.trim();
 
-		if (user == null) {
-			out.print("{\"success\":false,\"message\":\"No account found with this number. Please sign up first.\"}");
-			return;
-		}
+        String targetRole = req.getParameter("targetRole");
+        targetRole = targetRole == null
+                ? ""
+                : targetRole.trim().toLowerCase();
 
-		SendResult result = OtpService.sendOtp(phone);
-		if (!result.success) {
-			out.print("{\"success\":false,\"message\":\"" + escape(result.message) + "\"}");
-			return;
-		}
+        if (!"admin".equals(targetRole)
+                && !"customer".equals(targetRole)) {
 
-		StringBuilder json = new StringBuilder();
-		json.append("{\"success\":true,\"message\":\"").append(escape(result.message)).append("\"");
-		if (result.otpCode != null) {
-			json.append(",\"otp\":\"").append(escape(result.otpCode)).append("\"");
-		}
-		json.append("}");
-		out.print(json.toString());
-	}
+            sendJson(resp, false, "Please select a valid login option.");
+            return;
+        }
 
-	private void verifyOtp(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		String phone = OtpService.normalizePhone(req.getParameter("phone"));
-		String otp = req.getParameter("otp");
+        if (email.isBlank()) {
+            sendJson(resp, false, "Please enter your email address.");
+            return;
+        }
 
-		if (!OtpService.isValidPhone(phone) || otp == null || otp.trim().isEmpty()) {
-			resp.sendRedirect(req.getContextPath() + "/login?error=otpInvalid&tab=otp");
-			return;
-		}
+        if ("send".equalsIgnoreCase(action)) {
+            sendOtp(req, resp, email, targetRole);
+        } else if ("verify".equalsIgnoreCase(action)) {
+            verifyOtp(req, resp, email, targetRole);
+        } else {
+            sendJson(resp, false, "Invalid OTP request.");
+        }
+    }
 
-		if (!OtpService.verify(phone, otp)) {
-			resp.sendRedirect(req.getContextPath() + "/login?error=otpInvalid&tab=otp");
-			return;
-		}
+    private void sendOtp(HttpServletRequest req,
+                         HttpServletResponse resp,
+                         String email,
+                         String targetRole)
+            throws IOException {
 
-		UserDAO userDAO = new UserDAOImpl();
-		User user = userDAO.getUserByPhone(phone);
+        User user = userDAO.getUserByEmail(email);
 
-		if (user == null) {
-			resp.sendRedirect(req.getContextPath() + "/login?error=otpInvalid&tab=otp");
-			return;
-		}
+        if (user == null || user.getRole() == null) {
+            sendJson(resp, false,
+                    "No account was found for this email address.");
+            return;
+        }
 
-		HttpSession session = req.getSession();
-		session.setAttribute("user", user);
+        String databaseRole = user.getRole().trim();
 
-		String targetRole = req.getParameter("targetRole");
-		if ("delivery".equalsIgnoreCase(targetRole) && !user.isDeliveryPartner()) {
-			resp.sendRedirect(req.getContextPath() + "/login?error=notDelivery&role=delivery&tab=otp");
-			return;
-		}
+        if (!databaseRole.equalsIgnoreCase(targetRole)) {
+            sendJson(resp, false,
+                    "This account cannot use the selected login option.");
+            return;
+        }
 
-		if (user.isAdmin()) {
-			resp.sendRedirect(req.getContextPath() + "/adminDashboard");
-		} else if (user.isDeliveryPartner()) {
-			resp.sendRedirect(req.getContextPath() + "/deliveryDashboard");
-		} else {
-			resp.sendRedirect(req.getContextPath() + "/restaurant");
-		}
-	}
+        String otp = String.format("%06d", random.nextInt(1000000));
 
-	private static String escape(String value) {
-		if (value == null) {
-			return "";
-		}
-		return value.replace("\\", "\\\\").replace("\"", "\\\"");
-	}
+        try {
+            EmailOtpService.sendOtp(user.getEmail(), otp);
+
+            HttpSession session = req.getSession(true);
+
+            session.setAttribute("loginOtp", otp);
+            session.setAttribute("loginOtpEmail", email);
+            session.setAttribute("loginOtpRole", targetRole);
+            session.setAttribute("loginOtpExpiry",
+                    System.currentTimeMillis() + OTP_VALIDITY);
+            session.setAttribute("loginOtpAttempts", 0);
+
+            sendJson(resp, true,
+                    "OTP sent to your registered email address.");
+
+        } catch (Exception e) {
+            getServletContext().log("Failed to send login OTP.", e);
+
+            sendJson(resp, false,
+                    "Unable to send OTP right now. Please try again.");
+        }
+    }
+
+    private void verifyOtp(HttpServletRequest req,
+                           HttpServletResponse resp,
+                           String email,
+                           String targetRole)
+            throws IOException {
+
+        HttpSession session = req.getSession(false);
+
+        if (session == null) {
+            sendJson(resp, false,
+                    "Your OTP session has expired. Please request a new OTP.");
+            return;
+        }
+
+        Object savedOtp = session.getAttribute("loginOtp");
+        Object savedEmail = session.getAttribute("loginOtpEmail");
+        Object savedRole = session.getAttribute("loginOtpRole");
+        Object expiryObject = session.getAttribute("loginOtpExpiry");
+        Object attemptsObject = session.getAttribute("loginOtpAttempts");
+
+        if (savedOtp == null
+                || savedEmail == null
+                || savedRole == null
+                || expiryObject == null) {
+
+            sendJson(resp, false,
+                    "Please request an OTP before verifying.");
+            return;
+        }
+
+        if (!email.equalsIgnoreCase(savedEmail.toString())
+                || !targetRole.equalsIgnoreCase(savedRole.toString())) {
+
+            sendJson(resp, false,
+                    "The email or login option does not match your OTP request.");
+            return;
+        }
+
+        long expiry = (Long) expiryObject;
+
+        if (System.currentTimeMillis() > expiry) {
+            clearOtp(session);
+
+            sendJson(resp, false,
+                    "OTP expired. Please request a new OTP.");
+            return;
+        }
+
+        int attempts = attemptsObject instanceof Integer
+                ? (Integer) attemptsObject
+                : 0;
+
+        if (attempts >= MAX_ATTEMPTS) {
+            clearOtp(session);
+
+            sendJson(resp, false,
+                    "Too many attempts. Please request a new OTP.");
+            return;
+        }
+
+        String enteredOtp = req.getParameter("otp");
+
+        if (enteredOtp == null
+                || !savedOtp.toString().equals(enteredOtp.trim())) {
+
+            attempts++;
+            session.setAttribute("loginOtpAttempts", attempts);
+
+            if (attempts >= MAX_ATTEMPTS) {
+                clearOtp(session);
+
+                sendJson(resp, false,
+                        "Too many attempts. Please request a new OTP.");
+            } else {
+                sendJson(resp, false,
+                        "Incorrect OTP. Please try again.");
+            }
+
+            return;
+        }
+
+        // Recheck the account and role before completing login.
+        User user = userDAO.getUserByEmail(email);
+
+        if (user == null
+                || user.getRole() == null
+                || !user.getRole().trim().equalsIgnoreCase(targetRole)) {
+
+            clearOtp(session);
+
+            sendJson(resp, false,
+                    "The account could not be verified for this login option.");
+            return;
+        }
+
+        clearOtp(session);
+
+        // Prevent session fixation after successful authentication.
+        req.changeSessionId();
+        session.setAttribute("user", user);
+
+        if ("admin".equalsIgnoreCase(user.getRole().trim())) {
+            resp.sendRedirect(req.getContextPath() + "/adminDashboard");
+        } else {
+            resp.sendRedirect(req.getContextPath() + "/restaurant");
+        }
+    }
+
+    private void clearOtp(HttpSession session) {
+        session.removeAttribute("loginOtp");
+        session.removeAttribute("loginOtpEmail");
+        session.removeAttribute("loginOtpRole");
+        session.removeAttribute("loginOtpExpiry");
+        session.removeAttribute("loginOtpAttempts");
+    }
+
+    private void sendJson(HttpServletResponse resp,
+                          boolean success,
+                          String message)
+            throws IOException {
+
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+
+        String escapedMessage = message
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"");
+
+        resp.getWriter().write(
+                "{\"success\":" + success
+                + ",\"message\":\"" + escapedMessage + "\"}");
+    }
 }

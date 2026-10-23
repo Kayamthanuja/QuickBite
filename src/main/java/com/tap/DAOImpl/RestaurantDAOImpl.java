@@ -15,192 +15,194 @@ public class RestaurantDAOImpl implements RestaurantDAO {
 
     private static final String INSERT_QUERY =
             "INSERT INTO restaurant "
-          + "(name, cuisineType, deliveryTime, address, adminUserId, rating, isActive, imagePath) "
-          + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            + "(name, cuisineType, deliveryTime, address, adminUserId, "
+            + "rating, isActive, imagePath) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String SELECT_BY_ID_QUERY =
             "SELECT * FROM restaurant WHERE restaurantId = ?";
 
     private static final String SELECT_ALL_QUERY =
-            "SELECT * FROM restaurant";
+            "SELECT * FROM restaurant ORDER BY restaurantId";
 
     private static final String UPDATE_QUERY =
-            "UPDATE restaurant SET name = ?, cuisineType = ?, deliveryTime = ?, "
-          + "address = ?, adminUserId = ?, rating = ?, isActive = ?, imagePath = ? "
-          + "WHERE restaurantId = ?";
+            "UPDATE restaurant SET name = ?, cuisineType = ?, "
+            + "deliveryTime = ?, address = ?, adminUserId = ?, "
+            + "rating = ?, isActive = ?, imagePath = ? "
+            + "WHERE restaurantId = ?";
 
     private static final String DELETE_QUERY =
             "DELETE FROM restaurant WHERE restaurantId = ?";
 
 
+    // Add a new restaurant
     @Override
     public void addRestaurant(Restaurant restaurant) {
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(INSERT_QUERY)) {
 
-            preparedStatement.setString(1, restaurant.getName());
-            preparedStatement.setString(2, restaurant.getCuisineType());
-            preparedStatement.setString(3, restaurant.getDeliveryTime());
-            preparedStatement.setString(4, restaurant.getAddress());
-            preparedStatement.setInt(5, restaurant.getAdminUserId());
-            preparedStatement.setDouble(6, restaurant.getRating());
-            preparedStatement.setBoolean(7, restaurant.isActive());
-            preparedStatement.setString(8, restaurant.getImagePath());
+            ps.setString(1, restaurant.getName());
+            ps.setString(2, restaurant.getCuisineType());
+            ps.setString(3, restaurant.getDeliveryTime());
+            ps.setString(4, restaurant.getAddress());
+            ps.setInt(5, restaurant.getAdminUserId());
+            ps.setDouble(6, restaurant.getRating());
+            ps.setBoolean(7, restaurant.isActive());
+            ps.setString(8, restaurant.getImagePath());
 
-            preparedStatement.executeUpdate();
+            ps.executeUpdate();
 
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to add restaurant.", e);
         }
     }
 
 
+    // Get one restaurant by ID
     @Override
     public Restaurant getRestaurant(int restaurantId) {
 
         Restaurant restaurant = null;
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(SELECT_BY_ID_QUERY)) {
 
-            preparedStatement.setInt(1, restaurantId);
+            ps.setInt(1, restaurantId);
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
 
-                if (resultSet.next()) {
-
-                    restaurant = new Restaurant();
-
-                    restaurant.setRestaurantId(
-                            resultSet.getInt("restaurantId"));
-
-                    restaurant.setName(
-                            resultSet.getString("name"));
-
-                    restaurant.setCuisineType(
-                            resultSet.getString("cuisineType"));
-
-                    restaurant.setDeliveryTime(
-                            resultSet.getString("deliveryTime"));
-
-                    restaurant.setAddress(
-                            resultSet.getString("address"));
-
-                    restaurant.setAdminUserId(
-                            resultSet.getInt("adminUserId"));
-
-                    restaurant.setRating(
-                            resultSet.getDouble("rating"));
-
-                    restaurant.setActive(
-                            resultSet.getBoolean("isActive"));
-
-                    restaurant.setImagePath(
-                            resultSet.getString("imagePath"));
+                if (rs.next()) {
+                    restaurant = mapRestaurant(rs);
                 }
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to retrieve restaurant.", e);
         }
 
         return restaurant;
     }
 
 
+    // Get all restaurants for the existing management page
     @Override
     public List<Restaurant> getAllRestaurants() {
 
         List<Restaurant> restaurantList = new ArrayList<>();
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(SELECT_ALL_QUERY);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
+             ResultSet rs = ps.executeQuery()) {
 
-            while (resultSet.next()) {
-
-                Restaurant restaurant = new Restaurant();
-
-                restaurant.setRestaurantId(
-                        resultSet.getInt("restaurantId"));
-
-                restaurant.setName(
-                        resultSet.getString("name"));
-
-                restaurant.setCuisineType(
-                        resultSet.getString("cuisineType"));
-
-                restaurant.setDeliveryTime(
-                        resultSet.getString("deliveryTime"));
-
-                restaurant.setAddress(
-                        resultSet.getString("address"));
-
-                restaurant.setAdminUserId(
-                        resultSet.getInt("adminUserId"));
-
-                restaurant.setRating(
-                        resultSet.getDouble("rating"));
-
-                restaurant.setActive(
-                        resultSet.getBoolean("isActive"));
-
-                restaurant.setImagePath(
-                        resultSet.getString("imagePath"));
-
-                restaurantList.add(restaurant);
+            while (rs.next()) {
+                restaurantList.add(mapRestaurant(rs));
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to retrieve restaurants.", e);
         }
 
         return restaurantList;
     }
 
 
+    // Update restaurant details, including active/closed status
     @Override
     public void updateRestaurant(Restaurant restaurant) {
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(UPDATE_QUERY)) {
 
-            preparedStatement.setString(1, restaurant.getName());
-            preparedStatement.setString(2, restaurant.getCuisineType());
-            preparedStatement.setString(3, restaurant.getDeliveryTime());
-            preparedStatement.setString(4, restaurant.getAddress());
-            preparedStatement.setInt(5, restaurant.getAdminUserId());
-            preparedStatement.setDouble(6, restaurant.getRating());
-            preparedStatement.setBoolean(7, restaurant.isActive());
-            preparedStatement.setString(8, restaurant.getImagePath());
-            preparedStatement.setInt(9, restaurant.getRestaurantId());
+            ps.setString(1, restaurant.getName());
+            ps.setString(2, restaurant.getCuisineType());
+            ps.setString(3, restaurant.getDeliveryTime());
+            ps.setString(4, restaurant.getAddress());
+            ps.setInt(5, restaurant.getAdminUserId());
+            ps.setDouble(6, restaurant.getRating());
+            ps.setBoolean(7, restaurant.isActive());
+            ps.setString(8, restaurant.getImagePath());
+            ps.setInt(9, restaurant.getRestaurantId());
 
-            preparedStatement.executeUpdate();
+            int rowsUpdated = ps.executeUpdate();
+
+            if (rowsUpdated == 0) {
+                throw new RuntimeException(
+                        "Restaurant not found: "
+                        + restaurant.getRestaurantId());
+            }
 
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to update restaurant.", e);
         }
     }
 
 
+    // Delete a restaurant by ID
     @Override
     public void deleteRestaurant(int restaurantId) {
 
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement preparedStatement =
+             PreparedStatement ps =
                      connection.prepareStatement(DELETE_QUERY)) {
 
-            preparedStatement.setInt(1, restaurantId);
+            ps.setInt(1, restaurantId);
 
-            preparedStatement.executeUpdate();
+            ps.executeUpdate();
 
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to delete restaurant.", e);
         }
+    }
+
+
+    // Convert a database row into a Restaurant object
+    private Restaurant mapRestaurant(ResultSet rs)
+            throws SQLException {
+
+        Restaurant restaurant = new Restaurant();
+
+        restaurant.setRestaurantId(
+                rs.getInt("restaurantId"));
+
+        restaurant.setName(
+                rs.getString("name"));
+
+        restaurant.setCuisineType(
+                rs.getString("cuisineType"));
+
+        restaurant.setDeliveryTime(
+                rs.getString("deliveryTime"));
+
+        restaurant.setAddress(
+                rs.getString("address"));
+
+        restaurant.setAdminUserId(
+                rs.getInt("adminUserId"));
+
+        restaurant.setRating(
+                rs.getDouble("rating"));
+
+        restaurant.setActive(
+                rs.getBoolean("isActive"));
+
+        restaurant.setImagePath(
+                rs.getString("imagePath"));
+
+        return restaurant;
     }
 }

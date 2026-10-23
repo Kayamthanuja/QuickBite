@@ -1,10 +1,10 @@
 package com.tap.controller;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import org.mindrot.jbcrypt.BCrypt;
 
-import com.tap.DAO.UserDAO;
 import com.tap.DAOImpl.UserDAOImpl;
 import com.tap.model.User;
 
@@ -18,64 +18,135 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet("/login")
 public class LoginController extends HttpServlet {
 
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    private static final long serialVersionUID = 1L;
 
-		String email = req.getParameter("email");
-		String password = req.getParameter("password");
+    private final UserDAOImpl userDAO = new UserDAOImpl();
 
-		UserDAO userDAO = new UserDAOImpl();
+    @Override
+    protected void doGet(HttpServletRequest req,
+                         HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		User user = userDAO.getUserByEmail(email);
+        req.getRequestDispatcher("/Login.jsp").forward(req, resp);
+    }
 
-		String targetRole = req.getParameter("targetRole");
+    @Override
+    protected void doPost(HttpServletRequest req,
+                          HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		// Check whether user exists
-		if (user != null) {
+        req.setCharacterEncoding("UTF-8");
 
-			// Check whether password is correct
-			if (BCrypt.checkpw(password, user.getPassword())) {
+        String email = normalizeEmail(req.getParameter("email"));
+        String password = req.getParameter("password");
+        String targetRole = normalizeRole(req.getParameter("targetRole"));
 
-				// Validate target role if explicitly selected
-				if ("admin".equalsIgnoreCase(targetRole) && !user.isAdmin()) {
-					resp.sendRedirect(req.getContextPath() + "/login?error=notAdmin&role=admin");
-					return;
-				}
-				if ("delivery".equalsIgnoreCase(targetRole) && !user.isDeliveryPartner()) {
-					resp.sendRedirect(req.getContextPath() + "/login?error=notDelivery&role=delivery");
-					return;
-				}
+        if (email.isBlank() || password == null || password.isBlank()) {
+            redirectError(req, resp, "missing", targetRole);
+            return;
+        }
 
-				// Create session and store logged-in user
-				HttpSession session = req.getSession();
-				session.setAttribute("user", user);
+        if (!isSupportedRole(targetRole)) {
+            redirectError(req, resp, "wrongLoginOption", "customer");
+            return;
+        }
 
-				// Role-based destination
-				if (user.isAdmin()) {
-					resp.sendRedirect(req.getContextPath() + "/adminDashboard");
-				} else if (user.isDeliveryPartner()) {
-					resp.sendRedirect(req.getContextPath() + "/deliveryDashboard");
-				} else {
-					resp.sendRedirect(req.getContextPath() + "/restaurant");
-				}
+        User user = userDAO.getUserByEmail(email);
 
-			} else {
-				// Wrong password - return to login page
-				String query = "?error=invalid" + (targetRole != null ? "&role=" + targetRole : "");
-				resp.sendRedirect(req.getContextPath() + "/login" + query);
-			}
+        if (user == null || user.getRole() == null) {
+            redirectError(req, resp, "invalidCredentials", targetRole);
+            return;
+        }
 
-		} else {
-			// Wrong email - return to login page
-			String query = "?error=invalid" + (targetRole != null ? "&role=" + targetRole : "");
-			resp.sendRedirect(req.getContextPath() + "/login" + query);
-		}
-	}
+        String databaseRole = user.getRole().trim();
 
-	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if ("admin".equals(targetRole)) {
 
-		// Display Login.jsp
-		req.getRequestDispatcher("Login.jsp").forward(req, resp);
-	}
+            if (!"admin".equalsIgnoreCase(databaseRole)) {
+                redirectError(req, resp, "wrongLoginOption", "admin");
+                return;
+            }
+
+            String storedPassword = user.getPassword();
+
+            if (!isPasswordCorrect(password, storedPassword)) {
+                redirectError(req, resp, "invalidCredentials", "admin");
+                return;
+            }
+
+        } else {
+
+            if (!"customer".equalsIgnoreCase(databaseRole)) {
+                redirectError(req, resp, "wrongLoginOption", "customer");
+                return;
+            }
+
+            String storedPassword = user.getPassword();
+
+            if (!isPasswordCorrect(password, storedPassword)) {
+                redirectError(req, resp, "invalidCredentials", "customer");
+                return;
+            }
+        }
+
+        // Login successful
+        HttpSession session = req.getSession(true);
+        req.changeSessionId();
+        session.setAttribute("user", user);
+
+        if ("admin".equalsIgnoreCase(databaseRole)) {
+            resp.sendRedirect(req.getContextPath() + "/adminDashboard");
+        } else {
+            resp.sendRedirect(req.getContextPath() + "/restaurant");
+        }
+    }
+
+    private boolean isPasswordCorrect(String enteredPassword,
+                                      String storedPassword) {
+
+        if (storedPassword == null || storedPassword.isBlank()) {
+            return false;
+        }
+
+        // Support BCrypt-hashed passwords.
+        if (storedPassword.startsWith("$2a$")
+                || storedPassword.startsWith("$2b$")
+                || storedPassword.startsWith("$2y$")) {
+
+            try {
+                return BCrypt.checkpw(enteredPassword, storedPassword);
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
+
+        // Support plain-text passwords if your database uses them.
+        return storedPassword.equals(enteredPassword);
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim();
+    }
+
+    private String normalizeRole(String role) {
+        return role == null
+                ? ""
+                : role.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isSupportedRole(String role) {
+        return "admin".equals(role) || "customer".equals(role);
+    }
+
+    private void redirectError(HttpServletRequest req,
+                               HttpServletResponse resp,
+                               String error,
+                               String role)
+            throws IOException {
+
+        resp.sendRedirect(
+                req.getContextPath()
+                + "/login?error=" + error
+                + "&role=" + role);
+    }
 }

@@ -2,6 +2,9 @@
     pageEncoding="UTF-8"%>
 <%@ page import="java.util.List" %>
 <%@ page import="com.tap.model.Restaurant" %>
+<%@ page import="com.tap.model.Cart" %>
+<%@ page import="com.tap.model.CartItem" %>
+<%@ page import="com.tap.DAOImpl.RestaurantDAOImpl" %>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -291,6 +294,130 @@
         %>
 
     </main>
+
+    <%
+        Cart restCart = (Cart) session.getAttribute("cart");
+        int restCartCount = 0;
+        double restCartTotal = 0.0;
+        String restCartRestaurantName = "";
+        StringBuilder restCartSummary = new StringBuilder();
+
+        if (restCart != null && restCart.getCartItems() != null && !restCart.getCartItems().isEmpty()) {
+            for (CartItem item : restCart.getCartItems().values()) {
+                if (item != null) {
+                    restCartCount += item.getQuantity();
+                    if (restCartSummary.length() > 0) {
+                        restCartSummary.append(", ");
+                    }
+                    String iname = (item.getMenu() != null && item.getMenu().getItemName() != null)
+                            ? item.getMenu().getItemName() : "Item";
+                    restCartSummary.append(iname).append(" × ").append(item.getQuantity());
+                }
+            }
+            restCartTotal = restCart.getTotalAmount();
+            if (restCart.getRestaurantId() > 0) {
+                try {
+                    Restaurant rObj = new RestaurantDAOImpl().getRestaurant(restCart.getRestaurantId());
+                    if (rObj != null && rObj.getName() != null) {
+                        restCartRestaurantName = rObj.getName();
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+    %>
+
+    <!-- Sticky / Floating Cart Bar for Restaurant Page -->
+    <% if (restCartCount > 0) { %>
+    <div id="restaurantFloatingCartBar" class="floating-cart-bar">
+        <div class="cart-bar-left">
+            <div class="cart-bar-icon">🛒</div>
+            <div class="cart-bar-info">
+                <span class="cart-count-text">
+                    ORDERING FROM <strong><%=restCartRestaurantName.isEmpty() ? "Selected Restaurant" : restCartRestaurantName%></strong> &bull; <span><%=restCartCount%></span> ITEM(S)
+                </span>
+                <span class="cart-items-summary">
+                    <%=restCartSummary.toString()%>
+                </span>
+            </div>
+        </div>
+
+        <div class="cart-bar-right">
+            <div class="cart-bar-price">
+                <span class="cart-price-sublabel">Total:</span>
+                <span class="cart-price-val">&#8377;<%=String.format(java.util.Locale.ROOT, "%.2f", restCartTotal)%></span>
+            </div>
+            <button type="button" class="btn-preview-cart" onclick="openRestCartPreview()">
+                PREVIEW
+            </button>
+            <a href="<%=request.getContextPath()%>/cart" class="btn-checkout">
+                VIEW CART &amp; CHECKOUT &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- Cart Preview Modal for Restaurant Page -->
+    <div id="restCartPreviewModal" class="cart-preview-modal" style="display: none;">
+        <div class="preview-modal-content">
+            <div class="preview-modal-header">
+                <div>
+                    <h3 style="margin: 0 0 4px 0; font-size: 18px; color: #36291a;">Your Active Cart</h3>
+                    <p style="margin: 0; font-size: 13px; color: #8c8275;">
+                        From: <strong><%=restCartRestaurantName.isEmpty() ? "Restaurant" : restCartRestaurantName%></strong>
+                    </p>
+                </div>
+                <button type="button" class="btn-close-modal" onclick="closeRestCartPreview()">&times;</button>
+            </div>
+            <div class="preview-modal-body">
+                <div class="preview-items-list" style="max-height: 250px; overflow-y: auto;">
+                    <%
+                    for (CartItem it : restCart.getCartItems().values()) {
+                        if (it == null) continue;
+                        String iname = (it.getMenu() != null && it.getMenu().getItemName() != null)
+                                ? it.getMenu().getItemName() : "Item";
+                    %>
+                    <div class="preview-item-row" style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #efe8dd; font-size: 14px;">
+                        <span><strong><%=iname%></strong> &times; <%=it.getQuantity()%></span>
+                        <span>&#8377;<%=String.format(java.util.Locale.ROOT, "%.2f", it.getSubTotal())%></span>
+                    </div>
+                    <% } %>
+                </div>
+                <div class="preview-total-row" style="display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 2px solid #36291a; font-size: 16px;">
+                    <span>Total Amount</span>
+                    <strong>&#8377;<%=String.format(java.util.Locale.ROOT, "%.2f", restCartTotal)%></strong>
+                </div>
+            </div>
+            <div style="padding: 14px 20px; border-top: 1px solid #efe3d0; display: flex; justify-content: space-between; align-items: center; background: #fffdf7; border-radius: 0 0 12px 12px;">
+                <% if (restCart.getRestaurantId() > 0) { %>
+                <a href="<%=request.getContextPath()%>/menu?restaurantId=<%=restCart.getRestaurantId()%>" style="color: #d97706; font-size: 13px; font-weight: 600; text-decoration: none;">
+                    &larr; Return to Menu
+                </a>
+                <% } else { %>
+                <span></span>
+                <% } %>
+                <a href="<%=request.getContextPath()%>/cart" class="btn-checkout" style="display: inline-block; text-decoration: none; padding: 10px 20px;">
+                    Proceed to Cart &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openRestCartPreview() {
+            var modal = document.getElementById("restCartPreviewModal");
+            if (modal) modal.style.display = "flex";
+        }
+        function closeRestCartPreview() {
+            var modal = document.getElementById("restCartPreviewModal");
+            if (modal) modal.style.display = "none";
+        }
+        window.addEventListener("click", function(e) {
+            var modal = document.getElementById("restCartPreviewModal");
+            if (modal && e.target === modal) {
+                closeRestCartPreview();
+            }
+        });
+    </script>
+    <% } %>
 
     <%@ include file="footer.jsp" %>
 

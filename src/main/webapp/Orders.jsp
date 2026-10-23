@@ -106,14 +106,20 @@ SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy, hh:mm a");
 			<%
 			if (orders.isEmpty()) {
 			%>
+
 			<div class="no-orders">
-				<div class="empty-icon-circle">🍽️</div>
+				<div class="empty-icon-circle">🛍️</div>
+
 				<h2>No orders yet</h2>
-				<p>Your next favourite meal is waiting. Explore restaurants and
-					place your first order!</p>
-				<a class="shop-now-btn" href="<%=contextPath%>/restaurant">Explore
-					Restaurants &rarr;</a>
+
+				<p>Looks like you haven't ordered anything yet. Explore our
+					restaurants and find something delicious!</p>
+
+				<a class="shop-now-btn" href="<%=contextPath%>/restaurant">
+					Explore Restaurants <span>&rarr;</span>
+				</a>
 			</div>
+
 			<%
 			} else {
 			%>

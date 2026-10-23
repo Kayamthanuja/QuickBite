@@ -20,7 +20,7 @@ public class CartController extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String APPLIED_COUPON = "appliedCoupon";
+    private static final String APPLIED_COUPON = "appliedCoupon"; 
     private static final String COUPON_MESSAGE = "couponMessage";
     private static final String COUPON_INPUT = "couponInput";
 

@@ -11,7 +11,6 @@ import com.tap.model.Order;
 import com.tap.model.OrderItem;
 import com.tap.model.User;
 import com.tap.util.RazorpayService;
-import com.tap.util.SmsService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -23,116 +22,271 @@ import jakarta.servlet.http.HttpSession;
 @WebServlet("/razorpay/verify")
 public class RazorpayVerifyController extends HttpServlet {
 
-	@Override
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
+    private static final long serialVersionUID = 1L;
 
-		HttpSession session = req.getSession(false);
-		if (session == null || session.getAttribute("user") == null) {
-			resp.sendRedirect(req.getContextPath() + "/login");
-			return;
-		}
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
 
-		String razorpayOrderId = req.getParameter("razorpay_order_id");
-		String razorpayPaymentId = req.getParameter("razorpay_payment_id");
-		String razorpaySignature = req.getParameter("razorpay_signature");
+        HttpSession session = req.getSession(false);
 
-		String expectedOrderId = (String) session.getAttribute("pendingRazorpayOrderId");
+        if (session == null || session.getAttribute("user") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
 
-		if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null
-				|| expectedOrderId == null || !expectedOrderId.equals(razorpayOrderId)
-				|| !RazorpayService.verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature)) {
+        String razorpayOrderId =
+                req.getParameter("razorpay_order_id");
 
-			resp.sendRedirect(req.getContextPath() + "/checkout?error=paymentFailed");
-			return;
-		}
+        String razorpayPaymentId =
+                req.getParameter("razorpay_payment_id");
 
-		User user = (User) session.getAttribute("user");
-		Cart cart = (Cart) session.getAttribute("cart");
+        String razorpaySignature =
+                req.getParameter("razorpay_signature");
 
-		if (cart == null || cart.getItems().isEmpty()) {
-			resp.sendRedirect(req.getContextPath() + "/cart");
-			return;
-		}
+        String expectedOrderId =
+                (String) session.getAttribute("pendingRazorpayOrderId");
 
-		String deliveryAddress = (String) session.getAttribute("pendingDeliveryAddress");
-		String paymentMethod = (String) session.getAttribute("pendingPaymentMethod");
-		Double totalAmountObj = (Double) session.getAttribute("pendingTotalAmount");
+        if (razorpayOrderId == null
+                || razorpayPaymentId == null
+                || razorpaySignature == null
+                || expectedOrderId == null
+                || !expectedOrderId.equals(razorpayOrderId)) {
 
-		if (deliveryAddress == null || totalAmountObj == null) {
-			resp.sendRedirect(req.getContextPath() + "/checkout?error=orderFailed");
-			return;
-		}
+            resp.sendRedirect(
+                    req.getContextPath()
+                    + "/checkout?error=paymentFailed"
+            );
 
-		int restaurantId = cart.getRestaurantId();
-		if (restaurantId <= 0 && !cart.getItems().isEmpty()) {
-			restaurantId = cart.getItems().iterator().next().getMenu().getRestaurantId();
-			cart.setRestaurantId(restaurantId);
-		}
+            return;
+        }
 
-		Order order = new Order();
-		order.setUserId(user.getUserId());
-		order.setRestaurantId(restaurantId);
-		order.setOrderDate(new Timestamp(System.currentTimeMillis()));
-		order.setTotalAmount(totalAmountObj);
-		order.setStatus("PLACED");
-		order.setPaymentMode(paymentMethod != null ? paymentMethod : "ONLINE (Razorpay)");
-		order.setDeliveryAddress(deliveryAddress);
+        boolean signatureValid =
+                RazorpayService.verifyPaymentSignature(
+                        razorpayOrderId,
+                        razorpayPaymentId,
+                        razorpaySignature
+                );
 
-		// Set delivery partner and GPS tracking coordinates
-		order.setDeliveryPartnerId(3); // Default active rider
-		order.setRiderLat(12.9754);
-		order.setRiderLng(77.6045);
+        if (!signatureValid) {
 
-		String latStr = (String) session.getAttribute("pendingDestLat");
-		String lngStr = (String) session.getAttribute("pendingDestLng");
-		if (latStr != null && !latStr.isBlank() && lngStr != null && !lngStr.isBlank()) {
-			try {
-				order.setDestLat(Double.parseDouble(latStr.trim()));
-				order.setDestLng(Double.parseDouble(lngStr.trim()));
-			} catch (Exception ignored) {
-				order.setDestLat(12.9630);
-				order.setDestLng(77.6380);
-			}
-		} else {
-			order.setDestLat(12.9630);
-			order.setDestLng(77.6380);
-		}
+            resp.sendRedirect(
+                    req.getContextPath()
+                    + "/checkout?error=paymentFailed"
+            );
 
-		OrderDAOImpl orderDAO = new OrderDAOImpl();
-		int orderId = orderDAO.addOrder(order);
+            return;
+        }
 
-		if (orderId <= 0) {
-			resp.sendRedirect(req.getContextPath() + "/checkout?error=orderFailed");
-			return;
-		}
+        User user =
+                (User) session.getAttribute("user");
 
-		order.setOrderId(orderId);
-		OrderItemDAOImpl orderItemDAO = new OrderItemDAOImpl();
-		java.util.List<OrderItem> savedItems = new java.util.ArrayList<>();
+        Cart cart =
+                (Cart) session.getAttribute("cart");
 
-		for (CartItem cartItem : cart.getItems()) {
-			OrderItem orderItem = new OrderItem();
-			orderItem.setOrderId(orderId);
-			orderItem.setMenuId(cartItem.getMenu().getMenuId());
-			orderItem.setQuantity(cartItem.getQuantity());
-			orderItem.setTotalAmount(cartItem.getSubTotal());
-			orderItemDAO.addOrderItem(orderItem);
-			savedItems.add(orderItem);
-		}
+        if (cart == null
+                || cart.getItems() == null
+                || cart.getItems().isEmpty()) {
 
-		session.removeAttribute("cart");
-		session.removeAttribute("pendingDeliveryAddress");
-		session.removeAttribute("pendingDestLat");
-		session.removeAttribute("pendingDestLng");
-		session.removeAttribute("pendingPaymentMethod");
-		session.removeAttribute("pendingRazorpayOrderId");
-		session.removeAttribute("pendingTotalAmount");
-		session.setAttribute("lastOrderId", orderId);
+            resp.sendRedirect(
+                    req.getContextPath() + "/cart"
+            );
 
-		// Send notification with all ordered items
-		com.tap.util.OrderNotificationService.notifyOrder(order, savedItems, user);
+            return;
+        }
 
-		resp.sendRedirect(req.getContextPath() + "/orderSuccess");
-	}
+        String deliveryAddress =
+                (String) session.getAttribute(
+                        "pendingDeliveryAddress"
+                );
+
+        String paymentMethod =
+                (String) session.getAttribute(
+                        "pendingPaymentMethod"
+                );
+
+        Double totalAmount =
+                (Double) session.getAttribute(
+                        "pendingTotalAmount"
+                );
+
+        if (deliveryAddress == null
+                || totalAmount == null) {
+
+            resp.sendRedirect(
+                    req.getContextPath()
+                    + "/checkout?error=orderFailed"
+            );
+
+            return;
+        }
+
+        int restaurantId =
+                cart.getRestaurantId();
+
+        if (restaurantId <= 0
+                && !cart.getItems().isEmpty()) {
+
+            restaurantId =
+                    cart.getItems()
+                            .iterator()
+                            .next()
+                            .getMenu()
+                            .getRestaurantId();
+
+            cart.setRestaurantId(restaurantId);
+        }
+
+        Order order = new Order();
+
+        order.setUserId(user.getUserId());
+        order.setRestaurantId(restaurantId);
+        order.setOrderDate(
+                new Timestamp(System.currentTimeMillis())
+        );
+
+        order.setTotalAmount(totalAmount);
+
+        order.setStatus("PLACED");
+
+        order.setPaymentMode(
+                paymentMethod != null
+                ? paymentMethod
+                : "ONLINE (Razorpay)"
+        );
+
+        order.setDeliveryAddress(deliveryAddress);
+
+        order.setDeliveryPartnerId(3);
+
+        order.setRiderLat(12.9754);
+        order.setRiderLng(77.6045);
+
+        String latStr =
+                (String) session.getAttribute(
+                        "pendingDestLat"
+                );
+
+        String lngStr =
+                (String) session.getAttribute(
+                        "pendingDestLng"
+                );
+
+        if (latStr != null
+                && !latStr.trim().isEmpty()
+                && lngStr != null
+                && !lngStr.trim().isEmpty()) {
+
+            try {
+
+                order.setDestLat(
+                        Double.parseDouble(latStr.trim())
+                );
+
+                order.setDestLng(
+                        Double.parseDouble(lngStr.trim())
+                );
+
+            } catch (Exception e) {
+
+                order.setDestLat(12.9630);
+                order.setDestLng(77.6380);
+            }
+
+        } else {
+
+            order.setDestLat(12.9630);
+            order.setDestLng(77.6380);
+        }
+
+        OrderDAOImpl orderDAO =
+                new OrderDAOImpl();
+
+        int orderId =
+                orderDAO.addOrder(order);
+
+        if (orderId <= 0) {
+
+            resp.sendRedirect(
+                    req.getContextPath()
+                    + "/checkout?error=orderFailed"
+            );
+
+            return;
+        }
+
+        order.setOrderId(orderId);
+
+        OrderItemDAOImpl orderItemDAO =
+                new OrderItemDAOImpl();
+
+        java.util.List<OrderItem> savedItems =
+                new java.util.ArrayList<>();
+
+        for (CartItem cartItem : cart.getItems()) {
+
+            OrderItem orderItem =
+                    new OrderItem();
+
+            orderItem.setOrderId(orderId);
+
+            orderItem.setMenuId(
+                    cartItem.getMenu().getMenuId()
+            );
+
+            orderItem.setQuantity(
+                    cartItem.getQuantity()
+            );
+
+            orderItem.setTotalAmount(
+                    cartItem.getSubTotal()
+            );
+
+            orderItemDAO.addOrderItem(orderItem);
+
+            savedItems.add(orderItem);
+        }
+
+        session.removeAttribute("cart");
+
+        session.removeAttribute(
+                "pendingDeliveryAddress"
+        );
+
+        session.removeAttribute(
+                "pendingDestLat"
+        );
+
+        session.removeAttribute(
+                "pendingDestLng"
+        );
+
+        session.removeAttribute(
+                "pendingPaymentMethod"
+        );
+
+        session.removeAttribute(
+                "pendingRazorpayOrderId"
+        );
+
+        session.removeAttribute(
+                "pendingTotalAmount"
+        );
+
+        session.setAttribute(
+                "lastOrderId",
+                orderId
+        );
+
+        com.tap.util.OrderNotificationService.notifyOrder(
+                order,
+                savedItems,
+                user
+        );
+
+        resp.sendRedirect(
+                req.getContextPath()
+                + "/orderSuccess"
+        );
+    }
 }

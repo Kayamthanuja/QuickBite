@@ -67,6 +67,16 @@ public final class RazorpayService {
 
 	public static boolean verifyPaymentSignature(String orderId, String paymentId, String signature) {
 		try {
+			String expected = generateSignature(orderId, paymentId);
+			return expected != null && !expected.isEmpty() && expected.equals(signature);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	public static String generateSignature(String orderId, String paymentId) {
+		try {
 			String payload = orderId + "|" + paymentId;
 			Mac mac = Mac.getInstance("HmacSHA256");
 			mac.init(new SecretKeySpec(RazorpayConfig.KEY_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
@@ -81,12 +91,13 @@ public final class RazorpayService {
 				hex.append(h);
 			}
 
-			return hex.toString().equals(signature);
+			return hex.toString();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return false;
+			return "";
 		}
 	}
+
 
 	private static String basicAuth() {
 		String raw = RazorpayConfig.KEY_ID + ":" + RazorpayConfig.KEY_SECRET;

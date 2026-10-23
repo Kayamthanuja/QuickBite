@@ -124,9 +124,9 @@ try {
 }
 
 /*
- * FUNCTIONAL FILTERING
- * Search by name/description and filter by veg/non-veg.
- * Use the same keyword-based classification as the food badge.
+- FUNCTIONAL FILTERING
+- Search by name/description and filter by veg/non-veg.
+- Use the same keyword-based classification as the food badge.
  */
 List<Menu> filteredMenuList = new ArrayList<Menu>();
 
@@ -203,6 +203,12 @@ menuList = filteredMenuList;
 <link rel="stylesheet" href="<%=contextPath%>/CSS/navbar.css">
 <link rel="stylesheet" href="<%=contextPath%>/CSS/menu.css">
 <link rel="stylesheet" href="<%=contextPath%>/CSS/footer.css">
+
+<!-- Ensure base context path is available immediately -->
+<script>
+    window.QUICK_BITE_CONTEXT = "<%=contextPath%>";
+    var QUICK_BITE_CONTEXT = "<%=contextPath%>";
+</script>
 </head>
 
 <body class="menu-page-body">
@@ -232,9 +238,9 @@ menuList = filteredMenuList;
 
     <main class="menu-main-container">
 
-        <!-- Search and filter form -->
+        <!-- Search and filter form (Client-side instant filtering without page reload) -->
         <form action="<%=contextPath%>/menu" method="get"
-            class="toolbar-form">
+            class="toolbar-form" onsubmit="event.preventDefault(); applyMenuFilters(); return false;">
 
             <input type="hidden" name="restaurantId"
                 value="<%=restaurantId%>">
@@ -256,10 +262,12 @@ menuList = filteredMenuList;
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
 
-                        <input type="search" name="search"
+                        <input type="search" id="menuSearch" name="search"
                             value="<%=searchParam%>"
                             placeholder="Search dishes..."
-                            aria-label="Search dishes">
+                            aria-label="Search dishes"
+                            autocomplete="off"
+                            oninput="applyMenuFilters()">
                     </div>
 
                     <div class="filter-dropdown-wrapper">
@@ -277,35 +285,34 @@ menuList = filteredMenuList;
                             <div class="dropdown-header">
                                 <span class="dropdown-label">Sort By</span>
 
-                                <a href="<%=contextPath%>/menu?restaurantId=<%=restaurantId%>"
-                                    class="reset-link-btn">Reset</a>
+                                <a href="javascript:void(0)" onclick="resetMenuFilters()"
+                                    class="reset-link-btn" id="resetFiltersBtn">Reset</a>
                             </div>
 
                             <div class="dropdown-group">
 
                                 <label>
                                     <input type="radio" name="sortOption"
-                                        value="default"
-                                        <%="default".equals(sortParam) ? "checked" : ""%>>
+                                        value="default" checked
+                                        onchange="applyMenuFilters()">
                                     Recommended
                                 </label>
 
                                 <label>
                                     <input type="radio" name="sortOption"
                                         value="low-high"
-                                        <%="low-high".equals(sortParam) ? "checked" : ""%>>
+                                        onchange="applyMenuFilters()">
                                     Price: Low to High
                                 </label>
 
                                 <label>
                                     <input type="radio" name="sortOption"
                                         value="high-low"
-                                        <%="high-low".equals(sortParam) ? "checked" : ""%>>
+                                        onchange="applyMenuFilters()">
                                     Price: High to Low
                                 </label>
 
                             </div>
-
                             <div class="dropdown-divider"></div>
 
                             <div class="dropdown-group">
@@ -314,22 +321,22 @@ menuList = filteredMenuList;
 
                                 <label>
                                     <input type="radio" name="prefOption"
-                                        value="all"
-                                        <%="all".equals(prefParam) ? "checked" : ""%>>
+                                        value="all" checked
+                                        onchange="applyMenuFilters()">
                                     All Items
                                 </label>
 
                                 <label>
                                     <input type="radio" name="prefOption"
                                         value="veg"
-                                        <%="veg".equals(prefParam) ? "checked" : ""%>>
+                                        onchange="applyMenuFilters()">
                                     Pure Veg
                                 </label>
 
                                 <label>
                                     <input type="radio" name="prefOption"
                                         value="non-veg"
-                                        <%="non-veg".equals(prefParam) ? "checked" : ""%>>
+                                        onchange="applyMenuFilters()">
                                     Non-Veg
                                 </label>
 
@@ -337,7 +344,8 @@ menuList = filteredMenuList;
 
                             <div class="dropdown-divider"></div>
 
-                            <button type="submit" class="btn-apply-filters">
+                            <button type="button" class="btn-apply-filters" id="applyFiltersBtn"
+                                onclick="applyMenuFilters(); document.getElementById('filter-toggle').checked = false;">
                                 Apply
                             </button>
 
@@ -397,7 +405,13 @@ menuList = filteredMenuList;
                     String foodType = nonVeg ? "non-veg" : "veg";
             %>
 
-            <article class="food-card <%=!available ? "card-disabled" : ""%>">
+            <article class="food-card <%=!available ? "card-disabled" : ""%>"
+                id="foodCard-<%=menuId%>"
+                data-menu-id="<%=menuId%>"
+                data-name="<%=itemName.toLowerCase(Locale.ROOT)%>"
+                data-search="<%=searchableText%>"
+                data-food-type="<%=foodType%>"
+                data-price="<%=price%>">
 
                 <div class="food-card-img-container">
 
@@ -559,26 +573,21 @@ menuList = filteredMenuList;
 
     <%@ include file="footer.jsp"%>
 
-    <!-- Instant AJAX Cart & Client-Side Search Script (No Page Refreshes) -->
-    <script>
-        const QUICK_BITE_CONTEXT = "<%=contextPath%>";
+    <!-- Integrated Menu JavaScript File -->
+    <script src="<%=contextPath%>/JS/menu.js"></script>
 
+    <!-- Reliable Direct Cart & Filter Engine (Ensures instant execution) -->
+    <script>
         function closeConflictPopup() {
             const popup = document.getElementById("restaurantConflict");
-            if (popup) {
-                popup.style.display = "none";
-            }
+            if (popup) popup.style.display = "none";
         }
 
         function showConflictPopup(message) {
             const popup = document.getElementById("restaurantConflict");
             const msgEl = document.getElementById("conflictMessageText");
-            if (msgEl && message) {
-                msgEl.textContent = message;
-            }
-            if (popup) {
-                popup.style.display = "flex";
-            }
+            if (msgEl && message) msgEl.textContent = message;
+            if (popup) popup.style.display = "flex";
         }
 
         function openCartPreview() {
@@ -609,7 +618,7 @@ menuList = filteredMenuList;
                 params.append("ajax", "true");
                 params.append("source", "menu");
 
-                const response = await fetch(QUICK_BITE_CONTEXT + "/cart", {
+                const response = await fetch(window.QUICK_BITE_CONTEXT + "/cart", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded",
@@ -619,28 +628,27 @@ menuList = filteredMenuList;
                     body: params.toString()
                 });
 
-                const data = await response.json();
+                const text = await response.text();
+                let data = null;
+                try {
+                    data = JSON.parse(text);
+                } catch(e) {
+                    console.log("Cart response received:", text);
+                }
 
-                if (!data.success) {
-                    // Revert optimistic UI
+                if (data && data.conflict) {
                     if (addBtn) addBtn.style.display = "";
                     if (stepper) stepper.style.display = "none";
                     if (qtyVal) qtyVal.textContent = "0";
-
-                    if (data.conflict) {
-                        showConflictPopup(data.message || "You cannot add items from another restaurant.");
-                    } else {
-                        alert(data.message || "Could not update cart.");
-                    }
+                    showConflictPopup(data.message || "You cannot add items from another restaurant.");
                     return;
                 }
 
-                updateCartDisplay(data);
-
+                if (data && data.success !== false) {
+                    updateCartDisplay(data);
+                }
             } catch (err) {
                 console.error("Cart update error:", err);
-                if (addBtn) addBtn.style.display = "";
-                if (stepper) stepper.style.display = "none";
             }
         }
 
@@ -652,7 +660,6 @@ menuList = filteredMenuList;
             const current = parseInt(qtyVal ? qtyVal.textContent : "0", 10) || 0;
             const newQty = Math.max(0, current + delta);
 
-            // Optimistic UI update
             if (newQty <= 0) {
                 if (stepper) stepper.style.display = "none";
                 if (addBtn) addBtn.style.display = "";
@@ -670,7 +677,7 @@ menuList = filteredMenuList;
                 params.append("ajax", "true");
                 params.append("source", "menu");
 
-                const response = await fetch(QUICK_BITE_CONTEXT + "/cart", {
+                const response = await fetch(window.QUICK_BITE_CONTEXT + "/cart", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded",
@@ -680,16 +687,17 @@ menuList = filteredMenuList;
                     body: params.toString()
                 });
 
-                const data = await response.json();
+                const text = await response.text();
+                let data = null;
+                try {
+                    data = JSON.parse(text);
+                } catch(e) {}
 
-                if (data.success !== false) {
+                if (data && data.success !== false) {
                     updateCartDisplay(data);
-                } else {
-                    if (qtyVal) qtyVal.textContent = String(current);
                 }
             } catch (err) {
                 console.error("Cart step error:", err);
-                if (qtyVal) qtyVal.textContent = String(current);
             }
         }
 
@@ -704,7 +712,6 @@ menuList = filteredMenuList;
             const prevTotal = document.getElementById("previewTotalAmount");
             const prevList = document.getElementById("previewItemsList");
 
-            // Update floating cart bar
             if (floatingBar) {
                 floatingBar.style.display = (totalQty > 0) ? "flex" : "none";
             }
@@ -712,14 +719,6 @@ menuList = filteredMenuList;
                 cartCountVal.textContent = String(totalQty);
             }
 
-            // Update navbar cart count
-            const navCounts = document.querySelectorAll(".nav-cart-count");
-            navCounts.forEach(el => {
-                el.textContent = String(data.items ? data.items.length : totalQty);
-                el.style.display = (totalQty > 0) ? "inline-block" : "none";
-            });
-
-            // Update preview items & summary
             if (Array.isArray(data.items)) {
                 let summaryParts = [];
                 if (prevList) prevList.innerHTML = "";
@@ -745,27 +744,99 @@ menuList = filteredMenuList;
             }
         }
 
-        // Instant Live Dish Search & Veg/Non-Veg Filter (No page reload)
-        document.addEventListener("DOMContentLoaded", function() {
-            const searchInput = document.querySelector('input[name="search"]');
-            if (searchInput) {
-                searchInput.addEventListener("input", function() {
-                    const q = searchInput.value.trim().toLowerCase();
-                    const cards = document.querySelectorAll(".food-card");
-                    let visible = 0;
-                    cards.forEach(card => {
-                        const title = (card.querySelector("h3") ? card.querySelector("h3").textContent : "").toLowerCase();
-                        const desc = (card.querySelector(".description") ? card.querySelector(".description").textContent : "").toLowerCase();
-                        const match = !q || title.includes(q) || desc.includes(q);
-                        card.style.display = match ? "" : "none";
-                        if (match) visible++;
-                    });
+        function resetMenuFilters() {
+            const searchInput = document.getElementById("menuSearch") || document.querySelector('input[name="search"]');
+            if (searchInput) searchInput.value = "";
 
-                    const countText = document.querySelector(".items-count-text");
-                    if (countText) {
-                        countText.textContent = "Showing " + visible + " menu items";
-                    }
+            const allPrefRadio = document.querySelector('input[name="prefOption"][value="all"]');
+            if (allPrefRadio) allPrefRadio.checked = true;
+
+            const defSortRadio = document.querySelector('input[name="sortOption"][value="default"]');
+            if (defSortRadio) defSortRadio.checked = true;
+
+            applyMenuFilters();
+            const toggle = document.getElementById('filter-toggle');
+            if (toggle) toggle.checked = false;
+        }
+
+        function applyMenuFilters() {
+            const searchInput = document.getElementById("menuSearch") || document.querySelector('input[name="search"]');
+            const q = (searchInput ? searchInput.value : "").trim().toLowerCase();
+
+            const prefRadio = document.querySelector('input[name="prefOption"]:checked');
+            const pref = prefRadio ? prefRadio.value : "all";
+
+            const sortRadio = document.querySelector('input[name="sortOption"]:checked');
+            const sort = sortRadio ? sortRadio.value : "default";
+
+            const grid = document.getElementById("menuGrid");
+            if (!grid) return;
+
+            const cards = Array.from(grid.querySelectorAll(".food-card"));
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const searchText = (card.getAttribute("data-search") || "").toLowerCase();
+                const foodType = card.getAttribute("data-food-type") || "veg";
+
+                let prefMatch = true;
+                if (pref === "veg") {
+                    prefMatch = (foodType === "veg");
+                } else if (pref === "non-veg") {
+                    prefMatch = (foodType === "non-veg");
+                }
+
+                let searchMatch = true;
+                if (q.length > 0) {
+                    searchMatch = searchText.includes(q);
+                }
+
+                const isVisible = prefMatch && searchMatch;
+                card.style.display = isVisible ? "" : "none";
+                if (isVisible) visibleCount++;
+            });
+
+            if (sort === "low-high" || sort === "high-low") {
+                cards.sort((a, b) => {
+                    const priceA = parseFloat(a.getAttribute("data-price") || "0");
+                    const priceB = parseFloat(b.getAttribute("data-price") || "0");
+                    return sort === "low-high" ? (priceA - priceB) : (priceB - priceA);
                 });
+                cards.forEach(card => grid.appendChild(card));
+            } else {
+                cards.sort((a, b) => {
+                    const idA = parseInt(a.getAttribute("data-menu-id") || "0", 10);
+                    const idB = parseInt(b.getAttribute("data-menu-id") || "0", 10);
+                    return idA - idB;
+                });
+                cards.forEach(card => grid.appendChild(card));
+            }
+
+            const countText = document.querySelector(".items-count-text");
+            if (countText) {
+                countText.textContent = "Showing " + visibleCount + " menu items";
+            }
+
+            let emptyNotice = document.getElementById("menuInstantEmptyNotice");
+            if (visibleCount === 0) {
+                if (!emptyNotice) {
+                    emptyNotice = document.createElement("div");
+                    emptyNotice.id = "menuInstantEmptyNotice";
+                    emptyNotice.className = "empty-state-notice";
+                    emptyNotice.style.cssText = "grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: #7a6e5d;";
+                    emptyNotice.innerHTML = "<h3>No dishes match your filter</h3><p style='margin: 8px 0 16px;'>Try choosing another preference or clearing the search text.</p><button type='button' class='btn-apply-filters' style='max-width:160px;margin:0 auto;display:inline-block;' onclick='resetMenuFilters()'>Reset Filters</button>";
+                    grid.appendChild(emptyNotice);
+                }
+                emptyNotice.style.display = "block";
+            } else if (emptyNotice) {
+                emptyNotice.style.display = "none";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById("menuSearch") || document.querySelector('input[name="search"]');
+            if (searchInput) {
+                searchInput.addEventListener("input", applyMenuFilters);
             }
         });
     </script>
