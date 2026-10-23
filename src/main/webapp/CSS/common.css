@@ -1,0 +1,210 @@
+@charset "UTF-8";
+
+/* =========================================
+   QuickBite Design Tokens & Common Theme
+   Supports seamless Light and Dark Modes
+   ========================================= */
+
+:root {
+    --qb-bg: #fff8ec;
+    --qb-surface: #ffffff;
+    --qb-surface-elevated: #fffdf8;
+    --qb-surface-subtle: #fff7eb;
+    --qb-surface-input: #fff8ec;
+    --qb-text: #38251b;
+    --qb-text-secondary: #665243;
+    --qb-text-muted: #8c786a;
+    --qb-border: #eee1cd;
+    --qb-border-subtle: #f4e8d8;
+    --qb-primary: #f5a623;
+    --qb-primary-hover: #e89512;
+    --qb-primary-glow: rgba(245, 166, 35, 0.25);
+    --qb-primary-subtle: #fff3df;
+    --qb-card-shadow: 0 10px 30px rgba(74, 47, 26, 0.08);
+    --qb-navbar-bg: #fffdf8;
+    --qb-navbar-border: #eee1cd;
+    --qb-footer-bg: #2f1d13;
+    --qb-footer-text: #f3dfcb;
+    --qb-dropdown-bg: #ffffff;
+    --qb-card-bg: #ffffff;
+    --qb-modal-overlay: rgba(30, 18, 10, 0.65);
+}
+
+[data-theme="dark"] {
+    --qb-bg: #121418;
+    --qb-surface: #1b1e24;
+    --qb-surface-elevated: #232830;
+    --qb-surface-subtle: #16191f;
+    --qb-surface-input: #15181e;
+    --qb-text: #f0f3f6;
+    --qb-text-secondary: #c7ccd4;
+    --qb-text-muted: #8d95a3;
+    --qb-border: #2c323b;
+    --qb-border-subtle: #22262d;
+    --qb-primary: #f5a623;
+    --qb-primary-hover: #ffb84d;
+    --qb-primary-glow: rgba(245, 166, 35, 0.35);
+    --qb-primary-subtle: #2d261b;
+    --qb-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    --qb-navbar-bg: #16181e;
+    --qb-navbar-border: #262b33;
+    --qb-footer-bg: #0e1013;
+    --qb-footer-text: #c2c9d4;
+    --qb-dropdown-bg: #1e2229;
+    --qb-card-bg: #1b1e24;
+    --qb-modal-overlay: rgba(0, 0, 0, 0.78);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    color-scheme: light dark;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--qb-bg);
+    color: var(--qb-text);
+    min-height: 100vh;
+    line-height: 1.5;
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: var(--qb-text);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+/* Common Dark Theme Overrides across pages */
+[data-theme="dark"] .navbar {
+    background: var(--qb-navbar-bg);
+    border-bottom-color: var(--qb-navbar-border);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .logo {
+    color: #ffffff;
+}
+
+[data-theme="dark"] .nav-links > a {
+    color: var(--qb-text-secondary);
+}
+
+[data-theme="dark"] .nav-links > a:hover {
+    color: var(--qb-primary);
+    background: rgba(245, 166, 35, 0.12);
+}
+
+[data-theme="dark"] .profile-dropdown {
+    background: var(--qb-dropdown-bg);
+    border-color: var(--qb-border);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .profile-dropdown a {
+    color: var(--qb-text);
+}
+
+[data-theme="dark"] .profile-dropdown a:hover {
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--qb-primary);
+}
+
+[data-theme="dark"] .restaurant-card,
+[data-theme="dark"] .menu-card,
+[data-theme="dark"] .cart-card,
+[data-theme="dark"] .order-card,
+[data-theme="dark"] .order-details-card,
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .checkout-container .checkout-card,
+[data-theme="dark"] .login-card-split,
+[data-theme="dark"] .signup-card-split {
+    background-color: var(--qb-surface) !important;
+    border-color: var(--qb-border) !important;
+    box-shadow: var(--qb-card-shadow);
+    color: var(--qb-text);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: var(--qb-surface-input) !important;
+    color: var(--qb-text) !important;
+    border-color: var(--qb-border) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: var(--qb-text-muted);
+}
+
+[data-theme="dark"] .restaurant-title,
+[data-theme="dark"] .menu-item-name,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3 {
+    color: var(--qb-text) !important;
+}
+
+[data-theme="dark"] .restaurant-cuisine,
+[data-theme="dark"] .menu-item-desc,
+[data-theme="dark"] .delivery-time,
+[data-theme="dark"] p {
+    color: var(--qb-text-secondary);
+}
+
+[data-theme="dark"] footer,
+[data-theme="dark"] .footer-container {
+    background: var(--qb-footer-bg) !important;
+    border-top: 1px solid var(--qb-border);
+    color: var(--qb-footer-text);
+}
+
+/* Theme Toggle Button in Navbar */
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--qb-border);
+    background: var(--qb-surface-subtle);
+    color: var(--qb-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--qb-primary);
+    color: #3b2418;
+    border-color: var(--qb-primary);
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px var(--qb-primary-glow);
+}

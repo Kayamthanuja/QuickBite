@@ -1,0 +1,529 @@
+:root {
+    --qb-orange: #f39c12;
+    --qb-orange-hover: #e89108;
+    --qb-cream: #fdfbf7;
+    --qb-white: #ffffff;
+    --qb-brown: #2d1f10;
+    --qb-muted: #776b60;
+    --qb-border: #efe3d5;
+    --qb-shadow: 0 8px 26px rgba(45, 31, 16, 0.055);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.orders-page {
+    margin: 0;
+    background: var(--qb-cream) !important;
+    color: var(--qb-brown);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.orders-container {
+    width: min(958px, 92%);
+    margin: 0 auto;
+    padding: 22px 0 70px;
+    min-height: 650px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 0 0 20px;
+    margin-bottom: 26px;
+    border-bottom: 1px solid var(--qb-border);
+    font-size: 12px;
+}
+
+.breadcrumb a {
+    color: var(--qb-muted);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    color: var(--qb-orange-hover);
+}
+
+.breadcrumb span {
+    color: #b4a698;
+}
+
+.breadcrumb strong {
+    color: var(--qb-brown);
+    font-weight: 700;
+}
+
+/* Page Heading */
+.orders-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 36px;
+}
+
+.eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    color: #bd7100;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.orders-heading h1 {
+    margin: 0 0 8px;
+    color: var(--qb-brown);
+    font-size: clamp(28px, 4vw, 36px);
+    line-height: 1.15;
+    font-weight: 800;
+}
+
+.orders-heading p {
+    margin: 0;
+    color: var(--qb-muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.orders-count {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+    padding: 10px 15px;
+    border: 1px solid #f4ddbb;
+    border-radius: 13px;
+    background: #fff9ef;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.count-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    background: var(--qb-orange);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* Order History Header */
+.order-history {
+    width: 100%;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: var(--qb-brown);
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.section-heading > span {
+    color: var(--qb-muted);
+    font-size: 11px;
+}
+
+/* Order Card */
+.order-card {
+    overflow: hidden;
+    margin-bottom: 22px;
+    border: 1px solid var(--qb-border);
+    border-radius: 16px;
+    background: var(--qb-white);
+    box-shadow: var(--qb-shadow);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(45, 31, 16, 0.09);
+}
+
+/* Restaurant Header Section */
+.order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f2e9df;
+}
+
+.restaurant-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    min-width: 0;
+    flex: 1;
+}
+
+.restaurant-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid #e9d7c2;
+    border-radius: 12px;
+    background: #f8eee0;
+}
+
+.restaurant-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.restaurant-image-fallback {
+    font-size: 24px;
+}
+
+.restaurant-heading {
+    min-width: 0;
+    flex: 1;
+}
+
+.title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.restaurant-heading h3 {
+    margin: 0;
+    color: var(--qb-brown);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.order-id-pill {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #fdf5ea;
+    border: 1px solid #f3e1cb;
+    color: #9c5b00;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--qb-muted);
+    font-size: 12px;
+}
+
+.restaurant-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.meta-dot {
+    color: #ccc;
+}
+
+.order-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Status Badge with Pulsing Animation */
+.order-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* Pulsing effect for active orders */
+.status-placed .status-dot,
+.status-preparing .status-dot,
+.status-on-way .status-dot {
+    animation: pulse-ring 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.95);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.35);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 1;
+    }
+}
+
+.status-placed {
+    color: #118146;
+    background: #eafaf1;
+    border-color: #a3e9be;
+}
+
+.status-preparing {
+    color: #a96500;
+    background: #fff6e6;
+    border-color: #f7d18d;
+}
+
+.status-on-way {
+    color: #2765bd;
+    background: #eef5ff;
+    border-color: #c7dcff;
+}
+
+.status-delivered {
+    color: #426078;
+    background: #f1f5f9;
+    border-color: #dce5ed;
+}
+
+.status-cancelled {
+    color: #bd3434;
+    background: #fff0ef;
+    border-color: #f4c7c3;
+}
+
+/* Food Items Grid */
+.order-card-content {
+    padding: 18px 24px;
+}
+
+.ordered-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ordered-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid #f1e8de;
+    border-radius: 12px;
+    background: #fffdfa;
+}
+
+.food-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #f8eee0;
+}
+
+.food-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.food-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.food-details h4 {
+    margin: 0 0 3px;
+    color: #2d1f10;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.food-details p {
+    margin: 0;
+    color: var(--qb-muted);
+    font-size: 11px;
+}
+
+.food-line-total {
+    flex-shrink: 0;
+    color: var(--qb-brown);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+/* Payment & Breakdown */
+.order-payment-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 12px 24px 18px;
+    border-top: 1px dashed #f2e8dd;
+}
+
+.payment-info, .amount-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.payment-info {
+    padding-right: 20px;
+    border-right: 1px solid #f0e4d8;
+}
+
+.amount-info {
+    padding-left: 20px;
+}
+
+.summary-label {
+    color: #8a796a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.payment-info strong, .amount-info strong {
+    color: var(--qb-brown);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+/* Footer Section */
+.order-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px 24px;
+    border-top: 1px solid #f2e8dd;
+    background: #fffefa;
+}
+
+.total-paid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.total-paid strong {
+    color: var(--qb-brown);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.payment-caption {
+    color: var(--qb-muted);
+    font-size: 10px;
+}
+
+.view-details-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid var(--qb-orange);
+    border-radius: 10px;
+    background: var(--qb-orange);
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.view-details-btn:hover {
+    background: var(--qb-orange-hover);
+    border-color: var(--qb-orange-hover);
+    transform: translateY(-1px);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 700px) {
+    .order-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .order-status {
+        align-self: flex-start;
+    }
+    .ordered-items {
+        grid-template-columns: 1fr;
+    }
+    .order-card-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .view-details-btn {
+        width: 100%;
+    }
+}
+
+.order-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.reorder-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid #f5cf92;
+    border-radius: 10px;
+    background: #fffaf2;
+    color: #9c5b00 !important;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.reorder-btn:hover {
+    background: #fff0d8;
+    border-color: #efb75d;
+    transform: translateY(-1px);
+}

@@ -1,0 +1,110 @@
+
+@charset "UTF-8";
+
+/* QUICK BITE - FOOTER */
+
+.footer {
+    background: #30251d !important;
+    color: #fff5e5 !important;
+    margin-top: 50px;
+    padding: 42px 5% 20px;
+    border-top: 3px solid #efa936;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.4fr 1fr;
+    gap: 35px;
+}
+
+.footer-brand {
+    padding-right: 10px;
+}
+
+.footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    color: #fff3db !important;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 25px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.footer-logo-icon {
+    width: 29px;
+    height: 29px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #efa936;
+    color: #38251b;
+}
+
+.footer-brand p {
+    max-width: 310px;
+    color: #d0c1ae !important;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.footer-section h3 {
+    color: #fff3db !important;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.footer-section > a:not(.footer-logo) {
+    display: block;
+    width: fit-content;
+    margin-bottom: 11px;
+    color: #d0c1ae !important;
+    font-size: 13px;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-section > a:not(.footer-logo):hover {
+    color: #efa936 !important;
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 32px auto 0;
+    padding-top: 18px;
+    border-top: 1px solid #514237;
+    text-align: center;
+}
+
+.footer-bottom p {
+    color: #c2b3a2 !important;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+@media (max-width: 850px) {
+    .footer-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 30px;
+    }
+}
+
+@media (max-width: 500px) {
+    .footer {
+        padding: 32px 6% 18px;
+    }
+
+    .footer-container {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .footer-brand p {
+        max-width: 100%;
+    }
+}

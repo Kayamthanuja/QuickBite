@@ -1,0 +1,301 @@
+/* =========================================
+   QUICKBITE - SIGNUP PAGE
+   Theme matching restaurant.css, cart.css & login.css
+========================================= */
+:root {
+	--qb-orange: #f5a623;
+	--qb-orange-hover: #e89512;
+	--qb-cream: #fff7eb;
+	--qb-white: #ffffff;
+	--qb-brown: #3b2418;
+	--qb-muted: #81746c;
+	--qb-border: #f0dfcb;
+	--qb-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--qb-cream) !important;
+	color: var(--qb-brown) !important;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Outer Container with Full Food Background & Dark Gradient Overlay */
+.signup-container {
+	width: 100%;
+	min-height: calc(100vh - 72px);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 50px 20px 70px;
+	background: linear-gradient(135deg, rgba(35, 20, 11, 0.78),
+		rgba(20, 10, 5, 0.85)),
+		url("https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1920&q=80")
+		center/cover no-repeat fixed;
+}
+
+/* Split Card (Image Left, Form Right) */
+.signup-card-split {
+	width: 100%;
+	max-width: 980px;
+	background-color: var(--qb-white) !important;
+	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	border-radius: 20px !important;
+	box-shadow: var(--qb-shadow);
+	display: flex;
+	overflow: hidden;
+	min-height: 580px;
+}
+
+/* Left Panel - Unsplash Food Image & Message */
+.signup-image-panel {
+	flex: 0.85;
+	position: relative;
+	background: linear-gradient(180deg, rgba(43, 25, 14, 0.35) 0%,
+		rgba(43, 25, 14, 0.88) 100%),
+		url("https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80")
+		center/cover no-repeat;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding: 40px 35px;
+	color: #ffffff;
+}
+
+.brand-badge {
+	display: inline-block;
+	padding: 6px 14px;
+	background: rgba(255, 255, 255, 0.2);
+	backdrop-filter: blur(8px);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 700;
+	color: #fff3df;
+	margin-bottom: 16px;
+	width: fit-content;
+}
+
+.signup-image-panel h2 {
+	font-size: 30px;
+	font-weight: 800;
+	color: #ffffff;
+	margin: 0 0 12px;
+	line-height: 1.25;
+}
+
+.signup-image-panel p {
+	font-size: 14px;
+	line-height: 1.6;
+	color: #fff1df;
+	margin: 0;
+}
+
+/* Right Panel - Form */
+.signup-form-panel {
+	flex: 1.15;
+	padding: 40px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	background: var(--qb-white);
+}
+
+.signup-header {
+	text-align: left;
+	margin-bottom: 22px;
+}
+
+.signup-header h2 {
+	margin: 0 0 6px;
+	color: var(--qb-brown) !important;
+	font-size: 26px;
+	font-weight: 800;
+}
+
+.signup-header p {
+	margin: 0;
+	color: var(--qb-muted) !important;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+/* Error Alert */
+.error-message {
+	background-color: #fde8e8;
+	border: 1px solid #f8b4b4;
+	color: #9b1c1c;
+	padding: 11px 14px;
+	border-radius: 10px;
+	font-size: 13px;
+	font-weight: 700;
+	margin-bottom: 18px;
+}
+
+/* Form Layout & Rows */
+.form-row {
+	display: flex;
+	gap: 14px;
+}
+
+.form-row .form-group {
+	flex: 1;
+}
+
+.form-group {
+	margin-bottom: 15px;
+}
+
+.form-group label {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--qb-brown) !important;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.form-group input, .form-group textarea {
+	width: 100%;
+	padding: 10px 13px;
+	border: 1px solid var(--qb-border);
+	border-radius: 9px;
+	background-color: var(--qb-cream) !important;
+	color: var(--qb-brown) !important;
+	font-size: 14px;
+	font-family: Arial, Helvetica, sans-serif;
+	outline: none;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input {
+	height: 42px;
+}
+
+.form-group textarea {
+	resize: vertical;
+	min-height: 65px;
+	line-height: 1.4;
+}
+
+.form-group input::placeholder, .form-group textarea::placeholder {
+	color: #a8988d;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+	border-color: var(--qb-orange) !important;
+	box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.2);
+	background-color: #ffffff !important;
+}
+
+/* Create Account Button */
+.signup-btn {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 100% !important;
+	height: 46px !important;
+	margin-top: 10px !important;
+	padding: 0 15px !important;
+	border: 1px solid #f5a623 !important;
+	border-radius: 9px !important;
+	background: #f5a623 !important;
+	background-color: #f5a623 !important;
+	color: #3b2418 !important;
+	font-size: 15px !important;
+	font-weight: 800 !important;
+	cursor: pointer !important;
+	transition: background 0.2s ease, border-color 0.2s ease !important;
+	box-shadow: none !important;
+}
+
+.signup-btn:hover {
+	border-color: #e89512 !important;
+	background: #e89512 !important;
+	background-color: #e89512 !important;
+}
+
+/* Login Link Section */
+.login-text {
+	text-align: center;
+	margin-top: 20px;
+	color: var(--qb-muted) !important;
+	font-size: 14px;
+}
+
+.login-link {
+	margin-left: 5px;
+	color: #8b4d00 !important;
+	text-decoration: none;
+	font-weight: 800;
+}
+
+.login-link:hover {
+	text-decoration: underline;
+}
+
+/* Portal Role Selector */
+.portal-selector-bar {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 22px;
+	background: #fdf5ea;
+	padding: 6px;
+	border-radius: 12px;
+	border: 1px solid var(--qb-border);
+}
+
+.portal-tab-btn {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--qb-muted);
+	font-size: 13px;
+	font-weight: 700;
+	padding: 9px 8px;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	text-align: center;
+	white-space: nowrap;
+}
+
+.portal-tab-btn.active {
+	background: #ffffff;
+	color: #8b4d00;
+	box-shadow: 0 2px 6px rgba(59, 36, 24, 0.1);
+}
+
+/* Responsive Design */
+@media ( max-width : 880px) {
+	.signup-card-split {
+		flex-direction: column;
+		max-width: 520px;
+	}
+	.signup-image-panel {
+		min-height: 180px;
+		padding: 25px 20px;
+	}
+	.signup-image-panel h2 {
+		font-size: 24px;
+	}
+	.signup-form-panel {
+		padding: 30px 25px;
+	}
+}
+
+@media ( max-width : 550px) {
+	.signup-container {
+		padding: 20px 12px 40px;
+	}
+	.form-row {
+		flex-direction: column;
+		gap: 0;
+	}
+	.signup-image-panel {
+		display: none;
+	}
+}
