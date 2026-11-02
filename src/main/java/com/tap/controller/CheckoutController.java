@@ -1,3 +1,4 @@
+
 package com.tap.controller;
 
 import java.io.IOException;
@@ -24,39 +25,33 @@ public class CheckoutController extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final double DELIVERY_FEE = 40.00;
+    private static final double PLATFORM_FEE = 5.00;
+
     @Override
     protected void doGet(
             HttpServletRequest req,
             HttpServletResponse resp)
             throws ServletException, IOException {
 
-        HttpSession session =
-                req.getSession(false);
+        HttpSession session = req.getSession(false);
 
         if (session == null
                 || session.getAttribute("user") == null) {
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/login"
-            );
-
+            resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
 
-        User user =
-                (User) session.getAttribute("user");
+        User user = (User) session.getAttribute("user");
 
-        Cart cart =
-                (Cart) session.getAttribute("cart");
+        Cart cart = (Cart) session.getAttribute("cart");
 
         if (cart == null
                 || cart.getItems() == null
                 || cart.getItems().isEmpty()) {
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/cart"
-            );
-
+            resp.sendRedirect(req.getContextPath() + "/cart");
             return;
         }
 
@@ -69,9 +64,7 @@ public class CheckoutController extends HttpServlet {
         );
 
         RequestDispatcher rd =
-                req.getRequestDispatcher(
-                        "Checkout.jsp"
-                );
+                req.getRequestDispatcher("Checkout.jsp");
 
         rd.forward(req, resp);
     }
@@ -82,62 +75,41 @@ public class CheckoutController extends HttpServlet {
             HttpServletResponse resp)
             throws ServletException, IOException {
 
-        HttpSession session =
-                req.getSession(false);
+        HttpSession session = req.getSession(false);
 
         if (session == null
                 || session.getAttribute("user") == null) {
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/login"
-            );
-
+            resp.sendRedirect(req.getContextPath() + "/login");
             return;
         }
 
-        User user =
-                (User) session.getAttribute("user");
+        User user = (User) session.getAttribute("user");
 
-        Cart cart =
-                (Cart) session.getAttribute("cart");
+        Cart cart = (Cart) session.getAttribute("cart");
 
         if (cart == null
                 || cart.getItems() == null
                 || cart.getItems().isEmpty()) {
 
-            resp.sendRedirect(
-                    req.getContextPath() + "/cart"
-            );
-
+            resp.sendRedirect(req.getContextPath() + "/cart");
             return;
         }
 
-        String address =
-                req.getParameter("address");
+        String address = req.getParameter("address");
+        String city = req.getParameter("city");
+        String pincode = req.getParameter("pincode");
+        String paymentMethod = req.getParameter("paymentMethod");
 
-        String city =
-                req.getParameter("city");
+        String lat = req.getParameter("latitude");
+        String lng = req.getParameter("longitude");
 
-        String pincode =
-                req.getParameter("pincode");
-
-        String paymentMethod =
-                req.getParameter("paymentMethod");
-
-        String lat =
-                req.getParameter("latitude");
-
-        String lng =
-                req.getParameter("longitude");
-
-        if (address == null
-                || address.trim().isEmpty()) {
+        if (address == null || address.trim().isEmpty()) {
 
             resp.sendRedirect(
                     req.getContextPath()
                     + "/checkout?error=invalidAddress"
             );
-
             return;
         }
 
@@ -148,7 +120,6 @@ public class CheckoutController extends HttpServlet {
                     req.getContextPath()
                     + "/checkout?error=invalidPincode"
             );
-
             return;
         }
 
@@ -159,14 +130,11 @@ public class CheckoutController extends HttpServlet {
                     req.getContextPath()
                     + "/checkout?error=invalidPayment"
             );
-
             return;
         }
 
         /*
          * Online payments must go through Razorpay.
-         * The normal /checkout POST must not create
-         * an online order directly.
          */
         if (isOnlinePayment(paymentMethod)) {
 
@@ -174,7 +142,6 @@ public class CheckoutController extends HttpServlet {
                     req.getContextPath()
                     + "/checkout?error=useOnlinePay"
             );
-
             return;
         }
 
@@ -190,80 +157,80 @@ public class CheckoutController extends HttpServlet {
                 + " - "
                 + pincode.trim();
 
-        if (lat != null
-                && !lat.trim().isEmpty()
-                && lng != null
-                && !lng.trim().isEmpty()) {
+        if (lat != null && !lat.trim().isEmpty()
+                && lng != null && !lng.trim().isEmpty()) {
 
             deliveryAddress +=
-                    " [lat:"
-                    + lat.trim()
-                    + ", lng:"
-                    + lng.trim()
-                    + "]";
+                    " [lat:" + lat.trim()
+                    + ", lng:" + lng.trim() + "]";
         }
 
-        int restaurantId =
-                cart.getRestaurantId();
+        /*
+         * RESTAURANT ID
+         */
+        int restaurantId = cart.getRestaurantId();
 
-        if (restaurantId <= 0
-                && !cart.getItems().isEmpty()) {
+        if (restaurantId <= 0) {
 
-            restaurantId =
-                    cart.getItems()
-                            .iterator()
-                            .next()
-                            .getMenu()
-                            .getRestaurantId();
+            restaurantId = cart.getItems()
+                    .iterator()
+                    .next()
+                    .getMenu()
+                    .getRestaurantId();
 
             cart.setRestaurantId(restaurantId);
         }
 
-        double totalAmount =
-                cart.getTotalAmount() + 40;
+        /*
+         * CALCULATE FINAL BILL
+         */
+        double itemTotal = cart.getTotalAmount();
 
-        Order order =
-                new Order();
+        String appliedCoupon =
+                (String) session.getAttribute("appliedCoupon");
 
-        order.setUserId(
-                user.getUserId()
+        double couponDiscount =
+                calculateCouponDiscount(
+                        appliedCoupon,
+                        itemTotal
+                );
+
+        double totalAmount = Math.max(
+                0.0,
+                itemTotal
+                + DELIVERY_FEE
+                + PLATFORM_FEE
+                - couponDiscount
         );
 
-        order.setRestaurantId(
-                restaurantId
-        );
+        /*
+         * CREATE ORDER
+         */
+        Order order = new Order();
+
+        order.setUserId(user.getUserId());
+
+        order.setRestaurantId(restaurantId);
 
         order.setOrderDate(
-                new Timestamp(
-                        System.currentTimeMillis()
-                )
+                new Timestamp(System.currentTimeMillis())
         );
 
-        order.setTotalAmount(
-                totalAmount
-        );
+        order.setTotalAmount(totalAmount);
 
-        order.setStatus(
-                "PLACED"
-        );
+        order.setStatus("PLACED");
 
-        order.setPaymentMode(
-                paymentMethod
-        );
+        order.setPaymentMode(paymentMethod);
 
-        order.setDeliveryAddress(
-                deliveryAddress
-        );
+        order.setDeliveryAddress(deliveryAddress);
 
         order.setDeliveryPartnerId(3);
 
         order.setRiderLat(12.9754);
         order.setRiderLng(77.6045);
 
-        if (lat != null
-                && !lat.trim().isEmpty()
-                && lng != null
-                && !lng.trim().isEmpty()) {
+        if (lat != null && !lat.trim().isEmpty()
+                && lng != null && !lng.trim().isEmpty()) {
 
             try {
 
@@ -287,11 +254,9 @@ public class CheckoutController extends HttpServlet {
             order.setDestLng(77.6380);
         }
 
-        OrderDAOImpl orderDAO =
-                new OrderDAOImpl();
+        OrderDAOImpl orderDAO = new OrderDAOImpl();
 
-        int orderId =
-                orderDAO.addOrder(order);
+        int orderId = orderDAO.addOrder(order);
 
         if (orderId <= 0) {
 
@@ -299,27 +264,25 @@ public class CheckoutController extends HttpServlet {
                     req.getContextPath()
                     + "/checkout?error=orderFailed"
             );
-
             return;
         }
 
         order.setOrderId(orderId);
 
+        /*
+         * SAVE ORDER ITEMS
+         */
         OrderItemDAOImpl orderItemDAO =
                 new OrderItemDAOImpl();
 
         java.util.List<OrderItem> savedItems =
                 new java.util.ArrayList<>();
 
-        for (CartItem cartItem :
-                cart.getItems()) {
+        for (CartItem cartItem : cart.getItems()) {
 
-            OrderItem orderItem =
-                    new OrderItem();
+            OrderItem orderItem = new OrderItem();
 
-            orderItem.setOrderId(
-                    orderId
-            );
+            orderItem.setOrderId(orderId);
 
             orderItem.setMenuId(
                     cartItem.getMenu().getMenuId()
@@ -333,20 +296,24 @@ public class CheckoutController extends HttpServlet {
                     cartItem.getSubTotal()
             );
 
-            orderItemDAO.addOrderItem(
-                    orderItem
-            );
+            orderItemDAO.addOrderItem(orderItem);
 
             savedItems.add(orderItem);
         }
 
+        /*
+         * CLEAR CART AND COUPON AFTER SUCCESS
+         */
         session.removeAttribute("cart");
+        session.removeAttribute("appliedCoupon");
+        session.removeAttribute("couponInput");
+        session.removeAttribute("couponMessage");
 
-        session.setAttribute(
-                "lastOrderId",
-                orderId
-        );
+        session.setAttribute("lastOrderId", orderId);
 
+        /*
+         * ORDER NOTIFICATION
+         */
         com.tap.util.OrderNotificationService.notifyOrder(
                 order,
                 savedItems,
@@ -354,9 +321,36 @@ public class CheckoutController extends HttpServlet {
         );
 
         resp.sendRedirect(
-                req.getContextPath()
-                + "/orderSuccess"
+                req.getContextPath() + "/orderSuccess"
         );
+    }
+
+    /*
+     * COUPON DISCOUNT CALCULATION
+     */
+    private double calculateCouponDiscount(
+            String code,
+            double itemTotal) {
+
+        if (code == null) {
+            return 0.0;
+        }
+
+        code = code.trim().toUpperCase();
+
+        if ("QUICK50".equals(code) && itemTotal > 200.00) {
+            return 50.00;
+        }
+
+        if ("WELCOME50".equals(code) && itemTotal > 150.00) {
+            return Math.min(itemTotal * 0.50, 100.00);
+        }
+
+        if ("TASTE20".equals(code) && itemTotal > 0) {
+            return itemTotal * 0.20;
+        }
+
+        return 0.0;
     }
 
     private static boolean isOnlinePayment(
