@@ -1,4 +1,5 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
 
 <%@ page import="com.tap.model.Cart"%>
 <%@ page import="com.tap.model.CartItem"%>
@@ -9,581 +10,450 @@
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Checkout | QuickBite</title>
+<title>Checkout | QuickBite</title>
 
-    <link rel="stylesheet"
-          href="<%=request.getContextPath()%>/CSS/common.css">
+<link rel="stylesheet"
+	href="<%=request.getContextPath()%>/CSS/common.css">
 
-    <link rel="stylesheet"
-          href="<%=request.getContextPath()%>/CSS/navbar.css">
+<link rel="stylesheet"
+	href="<%=request.getContextPath()%>/CSS/navbar.css">
 
-    <link rel="stylesheet"
-          href="<%=request.getContextPath()%>/CSS/checkout.css?v=<%=System.currentTimeMillis()%>">
+<link rel="stylesheet"
+	href="<%=request.getContextPath()%>/CSS/checkout.css?v=<%=System.currentTimeMillis()%>">
 
-    <link rel="stylesheet"
-          href="<%=request.getContextPath()%>/CSS/footer.css">
+<link rel="stylesheet"
+	href="<%=request.getContextPath()%>/CSS/footer.css">
 
-    <link rel="stylesheet"
-          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin="" />
+<link rel="stylesheet"
+	href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+	integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+	crossorigin="" />
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+	integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+	crossorigin=""></script>
 
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 </head>
 
 <body>
 
-    <%@ include file="navbar.jsp"%>
+	<%@ include file="navbar.jsp"%>
 
-    <%
+	<%
+	Cart cart = (Cart) request.getAttribute("cart");
+	User user = (User) request.getAttribute("user");
 
-        Cart cart = (Cart) request.getAttribute("cart");
-        User user = (User) request.getAttribute("user");
+	String checkoutError = (String) request.getAttribute("checkoutError");
 
-        String checkoutError = (String) request.getAttribute("checkoutError");
+	String contextPath = request.getContextPath();
 
-        String contextPath = request.getContextPath();
+	// Get applied coupon from session
+	String appliedCoupon = (String) session.getAttribute("appliedCoupon");
 
-    %>
+	// Calculate bill details
+	double itemTotal = 0.0;
+	double deliveryFee = 0.0;
+	double platformFee = 0.0;
+	double couponDiscount = 0.0;
+	double totalPayable = 0.0;
 
+	if (cart != null && !cart.getItems().isEmpty()) {
 
-    <main class="checkout-container container">
+		itemTotal = cart.getTotalAmount();
 
-        <div class="checkout-header">
+		deliveryFee = 40.00;
+		platformFee = 5.00;
 
-            <h2>Checkout</h2>
+		if (appliedCoupon != null) {
 
-            <p>
-                Pick your delivery location on the map and choose how you want
-                to pay.
-            </p>
+			if ("QUICK50".equalsIgnoreCase(appliedCoupon) && itemTotal > 200.00) {
 
-        </div>
+		couponDiscount = 50.00;
 
+			} else if ("WELCOME50".equalsIgnoreCase(appliedCoupon) && itemTotal > 150.00) {
 
-        <%
+		couponDiscount = Math.min(itemTotal * 0.50, 100.00);
 
-            if (checkoutError != null) {
+			} else if ("TASTE20".equalsIgnoreCase(appliedCoupon) && itemTotal > 0) {
 
-                String msg = "Something went wrong. Please try again.";
+		couponDiscount = itemTotal * 0.20;
+			}
+		}
 
-                if ("invalidPincode".equals(checkoutError)) {
+		totalPayable = Math.max(0.0, itemTotal + deliveryFee + platformFee - couponDiscount);
+	}
+	%>
 
-                    msg = "Please enter a valid 6-digit PIN code.";
 
-                } else if ("invalidAddress".equals(checkoutError)) {
+	<main class="checkout-container container">
 
-                    msg = "Please set your delivery address using the map or the address field.";
+		<div class="checkout-header">
 
-                } else if ("invalidPayment".equals(checkoutError)) {
+			<h2>Checkout</h2>
 
-                    msg = "Please select a payment method.";
+			<p>Pick your delivery location on the map and choose how you want
+				to pay.</p>
 
-                } else if ("paymentFailed".equals(checkoutError)) {
+		</div>
 
-                    msg = "Online payment failed or was cancelled. You can try again or choose COD.";
 
-                } else if ("orderFailed".equals(checkoutError)) {
+		<%
+		if (checkoutError != null) {
 
-                    msg = "Could not place the order. Please try again.";
+			String msg = "Something went wrong. Please try again.";
 
-                } else if ("useOnlinePay".equals(checkoutError)) {
+			if ("invalidPincode".equals(checkoutError)) {
 
-                    msg = "For UPI / Card, use the Proceed to Payment button so Razorpay can open.";
+				msg = "Please enter a valid 6-digit PIN code.";
 
-                }
+			} else if ("invalidAddress".equals(checkoutError)) {
 
-        %>
+				msg = "Please set your delivery address using the map or the address field.";
 
-        <div class="checkout-error-banner">
-            ⚠️ <%=msg%>
-        </div>
+			} else if ("invalidPayment".equals(checkoutError)) {
 
-        <%
+				msg = "Please select a payment method.";
 
-            }
+			} else if ("paymentFailed".equals(checkoutError)) {
 
-        %>
+				msg = "Online payment failed or was cancelled. You can try again or choose COD.";
 
+			} else if ("orderFailed".equals(checkoutError)) {
 
-        <%
+				msg = "Could not place the order. Please try again.";
 
-            if (cart == null || cart.getItems().isEmpty()) {
+			} else if ("useOnlinePay".equals(checkoutError)) {
 
-        %>
+				msg = "For UPI / Card, use the Proceed to Payment button so Razorpay can open.";
 
-        <div class="checkout-card empty-state-card">
+			}
+		%>
 
-            <div class="empty-icon-circle">
-                🛒
-            </div>
+		<div class="checkout-error-banner">
+			⚠️
+			<%=msg%>
+		</div>
 
-            <h3>Your cart is empty</h3>
+		<%
+		}
+		%>
 
-            <p>
-                Please add some items before proceeding to checkout.
-            </p>
 
-            <a href="<%=contextPath%>/restaurant"
-               class="back-cart-btn">
-                Browse Restaurants
-            </a>
+		<%
+		if (cart == null || cart.getItems().isEmpty()) {
+		%>
 
-        </div>
+		<div class="checkout-card empty-state-card">
 
+			<div class="empty-icon-circle">🛒</div>
 
-        <%
+			<h3>Your cart is empty</h3>
 
-            } else if (user == null) {
+			<p>Please add some items before proceeding to checkout.</p>
 
-        %>
+			<a href="<%=contextPath%>/restaurant" class="back-cart-btn">
+				Browse Restaurants </a>
 
-        <div class="checkout-card empty-state-card">
+		</div>
 
-            <div class="empty-icon-circle">
-                🔐
-            </div>
 
-            <h3>Please Login</h3>
+		<%
+		} else if (user == null) {
+		%>
 
-            <p>
-                Please login before proceeding to checkout.
-            </p>
+		<div class="checkout-card empty-state-card">
 
-            <a href="<%=contextPath%>/login"
-               class="place-order-btn">
-                Login to Continue
-            </a>
+			<div class="empty-icon-circle">🔐</div>
 
-        </div>
+			<h3>Please Login</h3>
 
+			<p>Please login before proceeding to checkout.</p>
 
-        <%
+			<a href="<%=contextPath%>/login" class="place-order-btn"> Login
+				to Continue </a>
 
-            } else {
+		</div>
 
-        %>
 
+		<%
+		} else {
+		%>
 
-        <form action="<%=contextPath%>/checkout"
-              method="post"
-              id="checkoutForm">
 
-            <div class="checkout-content">
+		<form action="<%=contextPath%>/checkout" method="post"
+			id="checkoutForm">
 
+			<div class="checkout-content">
 
-                <!-- ================= DELIVERY DETAILS ================= -->
 
-                <div class="checkout-left">
+				<!-- ================= DELIVERY DETAILS ================= -->
 
-                    <div class="checkout-card">
+				<div class="checkout-left">
 
-                        <h3 class="card-title">
-                            📍 Delivery Details
-                        </h3>
+					<div class="checkout-card">
 
+						<h3 class="card-title">📍 Delivery Details</h3>
 
-                        <div class="form-row">
 
-                            <div class="form-group">
+						<div class="form-row">
 
-                                <label for="name">
-                                    Full Name
-                                </label>
+							<div class="form-group">
 
-                                <input type="text"
-                                       id="name"
-                                       name="name"
-                                       value="<%=user.getUsername() != null ? user.getUsername() : ""%>"
-                                       readonly>
+								<label for="name"> Full Name </label> <input type="text"
+									id="name" name="name"
+									value="<%=user.getUsername() != null ? user.getUsername() : ""%>"
+									readonly>
 
-                            </div>
+							</div>
 
 
-                            <div class="form-group">
+							<div class="form-group">
 
-                                <label for="phone">
-                                    Phone Number
-                                </label>
+								<label for="phone"> Phone Number </label> <input type="text"
+									id="phone" name="phone"
+									value="<%=user.getPhone() != null ? user.getPhone() : ""%>"
+									readonly>
 
-                                <input type="text"
-                                       id="phone"
-                                       name="phone"
-                                       value="<%=user.getPhone() != null ? user.getPhone() : ""%>"
-                                       readonly>
+							</div>
 
-                            </div>
+						</div>
 
-                        </div>
 
+						<div class="map-picker-toolbar">
 
-                        <div class="map-picker-toolbar">
+							<button type="button" class="map-action-btn"
+								id="useMyLocationBtn">Use my current location</button>
 
-                            <button type="button"
-                                    class="map-action-btn"
-                                    id="useMyLocationBtn">
+							<span class="map-hint"> Or drag the pin / click on the map
+								to set delivery point </span>
 
-                                Use my current location
+						</div>
 
-                            </button>
 
-                            <span class="map-hint">
+						<div id="addressMap" class="address-map"></div>
 
-                                Or drag the pin / click on the map
-                                to set delivery point
 
-                            </span>
+						<input type="hidden" id="latitude" name="latitude" value="">
 
-                        </div>
+						<input type="hidden" id="longitude" name="longitude" value="">
 
 
-                        <div id="addressMap"
-                             class="address-map">
-                        </div>
+						<div class="form-group">
 
+							<label for="address"> Delivery Address </label>
 
-                        <input type="hidden"
-                               id="latitude"
-                               name="latitude"
-                               value="">
+							<textarea id="address" name="address" rows="2" required
+								placeholder="House / street will auto-fill from map; you can edit it"><%=user.getAddress() != null ? user.getAddress() : ""%></textarea>
 
-                        <input type="hidden"
-                               id="longitude"
-                               name="longitude"
-                               value="">
+						</div>
 
 
-                        <div class="form-group">
+						<div class="form-row">
 
-                            <label for="address">
-                                Delivery Address
-                            </label>
+							<div class="form-group">
 
-                            <textarea id="address"
-                                      name="address"
-                                      rows="2"
-                                      required
-                                      placeholder="House / street will auto-fill from map; you can edit it"><%=user.getAddress() != null ? user.getAddress() : ""%></textarea>
+								<label for="city"> City </label> <input type="text" id="city"
+									name="city" value="Bangalore" required>
 
-                        </div>
+							</div>
 
 
-                        <div class="form-row">
+							<div class="form-group">
 
-                            <div class="form-group">
+								<label for="pincode"> PIN Code </label> <input type="text"
+									id="pincode" name="pincode" placeholder="Enter PIN code"
+									pattern="[0-9]{6}" maxlength="6" required>
 
-                                <label for="city">
-                                    City
-                                </label>
+							</div>
 
-                                <input type="text"
-                                       id="city"
-                                       name="city"
-                                       value="Bangalore"
-                                       required>
+						</div>
 
-                            </div>
+					</div>
 
 
-                            <div class="form-group">
+					<!-- ================= PAYMENT METHOD ================= -->
 
-                                <label for="pincode">
-                                    PIN Code
-                                </label>
+					<div class="checkout-card">
 
-                                <input type="text"
-                                       id="pincode"
-                                       name="pincode"
-                                       placeholder="Enter PIN code"
-                                       pattern="[0-9]{6}"
-                                       maxlength="6"
-                                       required>
+						<h3 class="card-title">💳 Payment Method</h3>
 
-                            </div>
 
-                        </div>
+						<!-- COD -->
 
-                    </div>
+						<div class="payment-option-group">
 
+							<label class="payment-option" for="cod">
 
-                    <!-- ================= PAYMENT METHOD ================= -->
+								<div class="option-header">
 
-                    <div class="checkout-card">
+									<input type="radio" id="cod" name="paymentMethod" value="COD"
+										checked onclick="togglePaymentDetails()"> <span
+										class="payment-icon"> 💵 </span> <span class="payment-label">
+										Cash on Delivery (COD) </span>
 
-                        <h3 class="card-title">
-                            💳 Payment Method
-                        </h3>
+								</div>
 
+							</label>
 
-                        <!-- COD -->
 
-                        <div class="payment-option-group">
+							<div id="cod-details" class="payment-details-panel active">
 
-                            <label class="payment-option"
-                                   for="cod">
+								<p class="payment-note">Pay with cash or UPI directly to the
+									delivery partner when the order arrives.</p>
 
-                                <div class="option-header">
+							</div>
 
-                                    <input type="radio"
-                                           id="cod"
-                                           name="paymentMethod"
-                                           value="COD"
-                                           checked
-                                           onclick="togglePaymentDetails()">
+						</div>
 
-                                    <span class="payment-icon">
-                                        💵
-                                    </span>
 
-                                    <span class="payment-label">
-                                        Cash on Delivery (COD)
-                                    </span>
+						<!-- UPI -->
 
-                                </div>
+						<div class="payment-option-group">
 
-                            </label>
+							<label class="payment-option" for="upi">
 
+								<div class="option-header">
 
-                            <div id="cod-details"
-                                 class="payment-details-panel active">
+									<input type="radio" id="upi" name="paymentMethod" value="UPI"
+										onclick="togglePaymentDetails()"> <span
+										class="payment-icon"> 📱 </span> <span class="payment-label">
+										UPI (Google Pay, PhonePe, Paytm) </span>
 
-                                <p class="payment-note">
+								</div>
 
-                                    Pay with cash or UPI directly to the
-                                    delivery partner when the order arrives.
+							</label>
 
-                                </p>
 
-                            </div>
+							<div id="upi-details" class="payment-details-panel">
 
-                        </div>
+								<p class="payment-note">Choose your UPI app. Razorpay will
+									open the secure payment window.</p>
 
 
-                        <!-- UPI -->
+								<div class="upi-app-grid">
 
-                        <div class="payment-option-group">
+									<label class="upi-app-tile" for="upiGpay"> <input
+										type="radio" id="upiGpay" name="upiApp" value="GPAY" checked>
 
-                            <label class="payment-option"
-                                   for="upi">
+										<span class="upi-app-logo gpay"> GPay </span> <span
+										class="upi-app-name"> Google Pay </span>
 
-                                <div class="option-header">
+									</label> <label class="upi-app-tile" for="upiPhonepe"> <input
+										type="radio" id="upiPhonepe" name="upiApp" value="PHONEPE">
 
-                                    <input type="radio"
-                                           id="upi"
-                                           name="paymentMethod"
-                                           value="UPI"
-                                           onclick="togglePaymentDetails()">
+										<span class="upi-app-logo phonepe"> Pe </span> <span
+										class="upi-app-name"> PhonePe </span>
 
-                                    <span class="payment-icon">
-                                        📱
-                                    </span>
+									</label> <label class="upi-app-tile" for="upiPaytm"> <input
+										type="radio" id="upiPaytm" name="upiApp" value="PAYTM">
 
-                                    <span class="payment-label">
-                                        UPI (Google Pay, PhonePe, Paytm)
-                                    </span>
+										<span class="upi-app-logo paytm"> Paytm </span> <span
+										class="upi-app-name"> Paytm </span>
 
-                                </div>
+									</label>
 
-                            </label>
+								</div>
 
+							</div>
 
-                            <div id="upi-details"
-                                 class="payment-details-panel">
+						</div>
 
-                                <p class="payment-note">
+					</div>
 
-                                    Choose your UPI app. Razorpay will open
-                                    the secure payment window.
+				</div>
 
-                                </p>
 
+				<!-- ================= ORDER SUMMARY ================= -->
 
-                                <div class="upi-app-grid">
+				<aside class="checkout-summary">
 
-                                    <label class="upi-app-tile"
-                                           for="upiGpay">
+					<h3>Order Summary</h3>
 
-                                        <input type="radio"
-                                               id="upiGpay"
-                                               name="upiApp"
-                                               value="GPAY"
-                                               checked>
+					<div class="summary-items-list">
 
-                                        <span class="upi-app-logo gpay">
-                                            GPay
-                                        </span>
+						<%
+						for (CartItem cartItem : cart.getItems()) {
+						%>
 
-                                        <span class="upi-app-name">
-                                            Google Pay
-                                        </span>
+						<div class="summary-item">
 
-                                    </label>
+							<span> <%=cartItem.getMenu().getItemName()%> × <%=cartItem.getQuantity()%>
+							</span> <strong> ₹<%=String.format(java.util.Locale.US, "%.2f", cartItem.getSubTotal())%>
+							</strong>
 
+						</div>
 
-                                    <label class="upi-app-tile"
-                                           for="upiPhonepe">
+						<%
+						}
+						%>
 
-                                        <input type="radio"
-                                               id="upiPhonepe"
-                                               name="upiApp"
-                                               value="PHONEPE">
+					</div>
 
-                                        <span class="upi-app-logo phonepe">
-                                            Pe
-                                        </span>
+					<div class="summary-item border-top-row">
+						<span>Item Total</span> <strong> ₹<%=String.format(java.util.Locale.US, "%.2f", itemTotal)%>
+						</strong>
+					</div>
 
-                                        <span class="upi-app-name">
-                                            PhonePe
-                                        </span>
+					<%
+					if (couponDiscount > 0) {
+					%>
 
-                                    </label>
+					<div class="summary-item">
+						<span> Coupon Discount (<%=appliedCoupon%>)
+						</span> <strong style="color: green;"> -₹<%=String.format(java.util.Locale.US, "%.2f", couponDiscount)%>
+						</strong>
+					</div>
 
+					<%
+					}
+					%>
 
-                                    <label class="upi-app-tile"
-                                           for="upiPaytm">
+					<div class="summary-item">
+						<span>Delivery Fee</span> <strong> ₹<%=String.format(java.util.Locale.US, "%.2f", deliveryFee)%>
+						</strong>
+					</div>
 
-                                        <input type="radio"
-                                               id="upiPaytm"
-                                               name="upiApp"
-                                               value="PAYTM">
+					<div class="summary-item">
+						<span>Platform Fee</span> <strong> ₹<%=String.format(java.util.Locale.US, "%.2f", platformFee)%>
+						</strong>
+					</div>
 
-                                        <span class="upi-app-logo paytm">
-                                            Paytm
-                                        </span>
+					<div class="checkout-total">
 
-                                        <span class="upi-app-name">
-                                            Paytm
-                                        </span>
+						<span>Total Payable</span> <span class="total-price"> ₹<%=String.format(java.util.Locale.US, "%.2f", totalPayable)%>
+						</span>
 
-                                    </label>
+					</div>
 
-                                </div>
+					<button type="submit" class="place-order-btn" id="placeOrderBtn">
 
-                            </div>
+						Proceed to Payment →</button>
 
-                        </div>
+					<a href="<%=contextPath%>/cart" class="back-cart-btn"> Back to
+						Cart </a>
 
-                    </div>
+				</aside>
 
-                </div>
 
+			</div>
 
-                <!-- ================= ORDER SUMMARY ================= -->
+		</form>
 
-                <aside class="checkout-summary">
 
-                    <h3>
-                        Order Summary
-                    </h3>
+		<%
+		}
+		%>
 
+	</main>
 
-                    <div class="summary-items-list">
 
-                        <%
-
-                            for (CartItem cartItem : cart.getItems()) {
-
-                        %>
-
-                        <div class="summary-item">
-
-                            <span>
-                                <%=cartItem.getMenu().getItemName()%>
-                                ×
-                                <%=cartItem.getQuantity()%>
-                            </span>
-
-                            <strong>
-                                &#8377;<%=cartItem.getSubTotal()%>
-                            </strong>
-
-                        </div>
-
-                        <%
-
-                            }
-
-                        %>
-
-                    </div>
-
-
-                    <div class="summary-item border-top-row">
-
-                        <span>
-                            Delivery Fee
-                        </span>
-
-                        <strong>
-                            &#8377;40
-                        </strong>
-
-                    </div>
-
-
-                    <div class="checkout-total">
-
-                        <span>
-                            Total Payable
-                        </span>
-
-                        <span class="total-price">
-
-                            &#8377;<%=cart.getTotalAmount() + 40%>
-
-                        </span>
-
-                    </div>
-
-
-                    <input type="hidden"
-                           name="totalAmount"
-                           value="<%=cart.getTotalAmount() + 40%>">
-
-
-                    <button type="submit"
-                            class="place-order-btn"
-                            id="placeOrderBtn">
-
-                        Proceed to Payment →
-
-                    </button>
-
-
-                    <a href="<%=contextPath%>/cart"
-                       class="back-cart-btn">
-
-                        Back to Cart
-
-                    </a>
-
-                </aside>
-
-
-            </div>
-
-        </form>
-
-
-        <%
-
-            }
-
-        %>
-
-    </main>
-
-
-    <script>
+	<script>
 
         const contextPath = "<%=contextPath%>";
 
@@ -1481,7 +1351,7 @@
     </script>
 
 
-    <%@ include file="footer.jsp"%>
+	<%@ include file="footer.jsp"%>
 
 </body>
 
